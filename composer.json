@@ -1,0 +1,14 @@
+{
+    "name": "rindow/rindow-opencl-dev",
+    "type": "project",
+    "description": "OpenCL for PHP",
+    "keywords": ["rindow","opencl","gpu","math"],
+    "license": "BSD-3-Clause",
+    "require": {
+        "php": ">=7.2",
+        "interop-phpobjects/polite-math": ">=1.0.3"
+    },
+    "require-dev": {
+        "ext-rindow_openblas": ">=0.1.6"
+    }
+}

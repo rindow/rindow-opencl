@@ -1,0 +1,42 @@
+// vim:ft=javascript
+
+ARG_ENABLE('rindow_opencl', 'rindow_opencl support', 'no');
+
+ARG_WITH('opencl', 'opencl support', 'no');
+
+if (PHP_RINDOW_OPENCL != 'no') {
+  var PHP_RINDOW_OPENCL_CFLAGS="\
+    /DZEND_ENABLE_STATIC_TSRMLS_CACHE=1 \
+    /I" + configure_module_dirname + " \
+    /I" + configure_module_dirname + "/include \
+  ";
+  if(CHECK_HEADER_ADD_INCLUDE("CL/opencl.h", "rindow_opencl", PHP_OPENCL + '/include')) {
+    PHP_RINDOW_OPENCL_CFLAGS = PHP_RINDOW_OPENCL_CFLAGS + "\
+        /I" + PHP_OPENCL + "/include \
+    ";
+  } else {
+    ERROR("NOT FOUND: OpenCL header files. Please set --with-opencl=/some/directory/path");
+  }
+  if(CHECK_HEADER_ADD_INCLUDE("Interop/Polite/Math/Matrix.h", "rindow_opencl", configure_module_dirname + '/vendor/interop-phpobjects/polite-math/include')) {
+    PHP_RINDOW_OPENCL_CFLAGS = PHP_RINDOW_OPENCL_CFLAGS + "\
+        /I" + configure_module_dirname + "/vendor/interop-phpobjects/polite-math/include \
+    ";
+  } else {
+      ERROR("NOT FOUND: LinearBuffer interface header files. Please execute \"composer update\" on development directory.");
+  }
+
+	// Condense whitespace in CFLAGS
+  PHP_RINDOW_OPENCL_CFLAGS = PHP_RINDOW_OPENCL_CFLAGS.replace(/\s+/g, ' ');
+
+  AC_DEFINE('HAVE_RINDOW_OPENCL', 1, 'rindow_opencl support enabled');
+
+  EXTENSION('rindow_opencl', 'rindow_opencl.c', null, PHP_RINDOW_OPENCL_CFLAGS);
+  ADD_SOURCES(configure_module_dirname + "/src/Rindow/OpenCL", " PlatformList.c DeviceList.c EventList.c CommandQueue.c Context.c Buffer.c Program.c Kernel.c", "rindow_opencl");
+  if (CHECK_LIB("OpenCL.lib", "rindow_opencl", PHP_OPENCL + '/lib')) {
+      ADD_FLAG("LIBS_OPENCL", "OpenCL.lib");
+      ADD_FLAG("LDFLAGS", '/libpath:"\\"' + PHP_OPENCL + '/lib' + '\\"" ');
+  } else {
+      ERROR("NOT FOUND: OpenCL library. Please copy OpenCL.lib to opencl sdk directory with --with-opencl=/some/dir");
+  }
+
+}
