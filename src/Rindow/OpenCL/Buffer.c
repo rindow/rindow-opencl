@@ -27,6 +27,19 @@
 
 static zend_object_handlers rindow_opencl_buffer_object_handlers;
 
+int php_rindow_opencl_assert_host_buffer_type(
+    php_interop_polite_math_matrix_linear_buffer_t *buffer,
+    char* name)
+{
+    if(!php_interop_polite_math_matrix_is_linear_buffer(buffer)) {
+        zend_throw_exception_ex(zend_ce_type_error, 0, "%s must implement interface %s",
+            name,PHP_INTEROP_POLITE_MATH_MATRIX_LINEAR_BUFFER_CLASSNAME);
+        return 1;
+    }
+    return 0;
+}
+
+
 // destractor
 static void php_rindow_opencl_buffer_free_object(zend_object* object)
 {
@@ -46,6 +59,7 @@ static zend_object* php_rindow_opencl_buffer_create_object(zend_class_entry* cla
     php_rindow_opencl_buffer_t* intern = NULL;
 
     intern = (php_rindow_opencl_buffer_t*)ecalloc(1, sizeof(php_rindow_opencl_buffer_t) + zend_object_properties_size(class_type));
+    intern->signature = PHP_RINDOW_OPENCL_BUFFER_SIGNATURE;
     intern->buffer = NULL;
     intern->size = 0;
     intern->dtype = 0;
@@ -89,7 +103,7 @@ static PHP_METHOD(Buffer, __construct)
         Z_PARAM_LONG(size)
         Z_PARAM_OPTIONAL
         Z_PARAM_LONG(flags)
-        Z_PARAM_ZVAL(host_buffer_obj_p)  // Interop\Polite\Math\Matrix\LinearBuffer
+        Z_PARAM_OBJECT_EX(host_buffer_obj_p,1,0)  // Interop\Polite\Math\Matrix\LinearBuffer
         Z_PARAM_LONG(host_offset)
         Z_PARAM_LONG(dtype)
     ZEND_PARSE_PARAMETERS_END();
@@ -98,6 +112,9 @@ static PHP_METHOD(Buffer, __construct)
 
     if(host_buffer_obj_p!=NULL && Z_TYPE_P(host_buffer_obj_p)==IS_OBJECT) {
         host_buffer_obj = Z_INTEROP_POLITE_MATH_MATRIX_LINEAR_BUFFER_OBJ_P(host_buffer_obj_p);
+        if(php_rindow_opencl_assert_host_buffer_type(host_buffer_obj, "hostBuffer")) {
+            return;
+        }
         if(host_buffer_obj->data==NULL) {
             zend_throw_exception(spl_ce_InvalidArgumentException, "Host buffer is not initialized.", CL_INVALID_VALUE);
             return;
@@ -209,7 +226,7 @@ static PHP_METHOD(Buffer, read)
 
     ZEND_PARSE_PARAMETERS_START_EX(ZEND_PARSE_PARAMS_THROW, 2, 8)
         Z_PARAM_OBJECT_OF_CLASS(command_queue_obj_p,php_rindow_opencl_command_queue_ce)
-        Z_PARAM_ZVAL(host_buffer_obj_p)  // Interop\Polite\Math\Matrix\LinearBuffer
+        Z_PARAM_OBJECT_EX(host_buffer_obj_p,1,0)  // Interop\Polite\Math\Matrix\LinearBuffer
         Z_PARAM_OPTIONAL
         Z_PARAM_LONG(size)
         Z_PARAM_LONG(offset)
@@ -230,6 +247,9 @@ static PHP_METHOD(Buffer, read)
     }
 
     host_buffer_obj = Z_INTEROP_POLITE_MATH_MATRIX_LINEAR_BUFFER_OBJ_P(host_buffer_obj_p);
+    if(php_rindow_opencl_assert_host_buffer_type(host_buffer_obj, "hostBuffer")) {
+        return;
+    }
     if(host_buffer_obj->data==NULL) {
         zend_throw_exception(spl_ce_InvalidArgumentException, "Host buffer is not initialized.", CL_INVALID_VALUE);
         return;
@@ -314,7 +334,7 @@ static PHP_METHOD(Buffer, write)
 
     ZEND_PARSE_PARAMETERS_START_EX(ZEND_PARSE_PARAMS_THROW, 2, 8)
         Z_PARAM_OBJECT_OF_CLASS(command_queue_obj_p,php_rindow_opencl_command_queue_ce)
-        Z_PARAM_ZVAL(host_buffer_obj_p)  // Interop\Polite\Math\Matrix\LinearBuffer
+        Z_PARAM_OBJECT_EX(host_buffer_obj_p,1,0)  // Interop\Polite\Math\Matrix\LinearBuffer
         Z_PARAM_OPTIONAL
         Z_PARAM_LONG(size)
         Z_PARAM_LONG(offset)
@@ -335,6 +355,9 @@ static PHP_METHOD(Buffer, write)
     }
 
     host_buffer_obj = Z_INTEROP_POLITE_MATH_MATRIX_LINEAR_BUFFER_OBJ_P(host_buffer_obj_p);
+    if(php_rindow_opencl_assert_host_buffer_type(host_buffer_obj, "hostBuffer")) {
+        return;
+    }
     if(host_buffer_obj->data==NULL) {
         zend_throw_exception(spl_ce_InvalidArgumentException, "Host buffer is not initialized.", CL_INVALID_VALUE);
         return;
@@ -420,7 +443,7 @@ static PHP_METHOD(Buffer, fill)
 
     ZEND_PARSE_PARAMETERS_START_EX(ZEND_PARSE_PARAMS_THROW, 2, 8)
         Z_PARAM_OBJECT_OF_CLASS(command_queue_obj_p,php_rindow_opencl_command_queue_ce)
-        Z_PARAM_ZVAL(pattern_buffer_obj_p)  // Interop\Polite\Math\Matrix\LinearBuffer
+        Z_PARAM_OBJECT_EX(pattern_buffer_obj_p,1,0)  // Interop\Polite\Math\Matrix\LinearBuffer
         Z_PARAM_OPTIONAL
         Z_PARAM_LONG(size)
         Z_PARAM_LONG(offset)
@@ -432,6 +455,9 @@ static PHP_METHOD(Buffer, fill)
 
     command_queue_obj = Z_RINDOW_OPENCL_COMMAND_QUEUE_OBJ_P(command_queue_obj_p);
     pattern_buffer_obj = Z_INTEROP_POLITE_MATH_MATRIX_LINEAR_BUFFER_OBJ_P(pattern_buffer_obj_p);
+    if(php_rindow_opencl_assert_host_buffer_type(pattern_buffer_obj, "patternBuffer")) {
+        return;
+    }
     if(pattern_buffer_obj->data==NULL) {
         zend_throw_exception(spl_ce_InvalidArgumentException, "pattern buffer is not initialized.", CL_INVALID_VALUE);
         return;

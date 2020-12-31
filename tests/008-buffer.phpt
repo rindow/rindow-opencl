@@ -127,6 +127,17 @@ for($i=0;$i<16;$i++) {
 }
 echo "SUCCESS read with null arguments\n";
 //
+// read with invalid object arguments
+//
+$invalidBuffer = new \stdClass();
+try {
+    $buffer->read($queue,$invalidBuffer);
+} catch (\Throwable $e) {
+    echo "Invalid Host Buffer catch: ".get_class($e)."\n";
+}
+echo "SUCCESS read with invalid object arguments\n";
+
+//
 // blocking write buffer
 //
 $hostBuffer = new RindowTest\OpenCL\HostBuffer(
@@ -179,6 +190,17 @@ for($i=0;$i<16;$i++) {
     assert($newHostBuffer[$i] == $i+20);
 }
 echo "SUCCESS write with null arguments\n";
+//
+// write with invalid object arguments
+//
+$invalidBuffer = new \stdClass();
+try {
+    $buffer->write($queue,$invalidBuffer);
+} catch (\Throwable $e) {
+    echo "Invalid Host Buffer catch: ".get_class($e)."\n";
+}
+echo "SUCCESS write with invalid object arguments\n";
+
 //
 // read and write buffer with wait event list
 //
@@ -250,6 +272,16 @@ foreach(range(0,15) as $value) {
 }
 echo "SUCCESS fill with null arguments\n";
 //
+// fill with invalid object arguments
+//
+$invalidBuffer = new \stdClass();
+try {
+    $buffer->fill($queue,$invalidBuffer);
+} catch (\Throwable $e) {
+    echo "Invalid Host Buffer catch: ".get_class($e)."\n";
+}
+echo "SUCCESS fill with invalid object arguments\n";
+//
 // copy
 //
 $hostBuffer = new RindowTest\OpenCL\HostBuffer(
@@ -304,12 +336,18 @@ Invalid Host Buffer catch: TypeError
 SUCCESS blocking read
 SUCCESS non-blocking read
 SUCCESS read with null arguments
+Invalid Host Buffer catch: TypeError
+SUCCESS read with invalid object arguments
 SUCCESS blocking write
 SUCCESS non-blocking write
 SUCCESS write with null arguments
+Invalid Host Buffer catch: TypeError
+SUCCESS write with invalid object arguments
 SUCCESS read and write with wait events
 SUCCESS fill
 SUCCESS fill with null arguments
+Invalid Host Buffer catch: TypeError
+SUCCESS fill with invalid object arguments
 SUCCESS copy
 SUCCESS copy with null arguments
 SUCCESS construct with explicit dtype

@@ -2,8 +2,10 @@
 # define PHP_RINDOW_OPENCL_EVENT_LIST_H
 
 #define PHP_RINDOW_OPENCL_EVENT_LIST_CLASSNAME "Rindow\\OpenCL\\EventList"
+#define PHP_RINDOW_OPENCL_EVENT_LIST_SIGNATURE 0x76454c4377646e52 // "RndwCLEv"
 
 typedef struct {
+    zend_long signature;
     cl_uint num;
     cl_event *events;
     zend_object std;

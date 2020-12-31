@@ -34,6 +34,7 @@ static zend_object* php_rindow_opencl_command_queue_create_object(zend_class_ent
     php_rindow_opencl_command_queue_t* intern = NULL;
 
     intern = (php_rindow_opencl_command_queue_t*)ecalloc(1, sizeof(php_rindow_opencl_command_queue_t) + zend_object_properties_size(class_type));
+    intern->signature = PHP_RINDOW_OPENCL_COMMAND_QUEUE_SIGNATURE;
     intern->command_queue = 0;
 
     zend_object_std_init(&intern->std, class_type);

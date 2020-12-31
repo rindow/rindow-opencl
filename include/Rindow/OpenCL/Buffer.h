@@ -2,8 +2,10 @@
 # define PHP_RINDOW_OPENCL_BUFFER_H
 
 #define PHP_RINDOW_OPENCL_BUFFER_CLASSNAME "Rindow\\OpenCL\\Buffer"
+#define PHP_RINDOW_OPENCL_BUFFER_SIGNATURE 0x66424c4377646e52 // "RndwCLBf"
 
 typedef struct {
+    zend_long signature;
     cl_mem buffer;
     size_t size;
     zend_long dtype;

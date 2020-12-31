@@ -76,6 +76,7 @@ static zend_object* php_rindow_opencl_kernel_create_object(zend_class_entry* cla
     php_rindow_opencl_kernel_t* intern = NULL;
 
     intern = (php_rindow_opencl_kernel_t*)ecalloc(1, sizeof(php_rindow_opencl_kernel_t) + zend_object_properties_size(class_type));
+    intern->signature = PHP_RINDOW_OPENCL_KERNEL_SIGNATURE;
     intern->kernel = NULL;
 
     zend_object_std_init(&intern->std, class_type);
@@ -152,7 +153,7 @@ static PHP_METHOD(Kernel, setArg)
 
     ZEND_PARSE_PARAMETERS_START_EX(ZEND_PARSE_PARAMS_THROW, 2, 3)
         Z_PARAM_LONG(arg_index)
-        Z_PARAM_ZVAL(arg_obj_p)
+        Z_PARAM_ZVAL(arg_obj_p) // long | double | opencl_buffer_ce | command_queue_ce
         Z_PARAM_OPTIONAL
         Z_PARAM_LONG(dtype)
     ZEND_PARSE_PARAMETERS_END();

@@ -96,6 +96,7 @@ static zend_object* php_rindow_opencl_context_create_object(zend_class_entry* cl
     php_rindow_opencl_context_t* intern = NULL;
 
     intern = (php_rindow_opencl_context_t*)ecalloc(1, sizeof(php_rindow_opencl_context_t) + zend_object_properties_size(class_type));
+    intern->signature = PHP_RINDOW_OPENCL_CONTEXT_SIGNATURE;
     intern->context = NULL;
     intern->devices = NULL;
     intern->num_devices = 0;
@@ -127,7 +128,7 @@ static PHP_METHOD(Context, __construct)
     cl_int errcode_ret=0;
 
     ZEND_PARSE_PARAMETERS_START_EX(ZEND_PARSE_PARAMS_THROW, 1, 1)
-        Z_PARAM_ZVAL(device_list_obj_p)  // ,php_rindow_opencl_context_ce
+        Z_PARAM_ZVAL(device_list_obj_p)  // long | php_rindow_opencl_context_ce
     ZEND_PARSE_PARAMETERS_END();
 
     if(Z_TYPE_P(device_list_obj_p) == IS_OBJECT) {

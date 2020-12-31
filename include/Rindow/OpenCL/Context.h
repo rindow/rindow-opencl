@@ -2,8 +2,10 @@
 # define PHP_RINDOW_OPENCL_CONTEXT_H
 
 #define PHP_RINDOW_OPENCL_CONTEXT_CLASSNAME "Rindow\\OpenCL\\Context"
+#define PHP_RINDOW_OPENCL_CONTEXT_SIGNATURE 0x78434c4377646e52 // "RndwCLCx"
 
 typedef struct {
+    zend_long signature;
     cl_context context;
     cl_int num_devices;
     cl_device_id *devices;

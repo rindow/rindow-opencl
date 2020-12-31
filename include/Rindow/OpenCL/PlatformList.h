@@ -2,8 +2,10 @@
 # define PHP_RINDOW_OPENCL_PLATFORM_LIST_H
 
 #define PHP_RINDOW_OPENCL_PLATFORM_LIST_CLASSNAME "Rindow\\OpenCL\\PlatformList"
+#define PHP_RINDOW_OPENCL_PLATFORM_LIST_SIGNATURE 0x66504c4377646e52 // "RndwCLPf"
 
 typedef struct {
+    zend_long signature;
     cl_uint num;
     cl_platform_id *platforms;
     zend_object std;

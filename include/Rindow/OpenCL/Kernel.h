@@ -2,8 +2,10 @@
 # define PHP_RINDOW_OPENCL_KERNEL_H
 
 #define PHP_RINDOW_OPENCL_KERNEL_CLASSNAME "Rindow\\OpenCL\\Kernel"
+#define PHP_RINDOW_OPENCL_KERNEL_SIGNATURE 0x6c4b4c4377646e52 // "RndwCLKl"
 
 typedef struct {
+    zend_long signature;
     cl_kernel kernel;
     zend_object std;
 } php_rindow_opencl_kernel_t;

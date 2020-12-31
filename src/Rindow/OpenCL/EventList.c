@@ -59,6 +59,7 @@ static zend_object* php_rindow_opencl_event_list_create_object(zend_class_entry*
     intern = (php_rindow_opencl_event_list_t*)ecalloc(1, sizeof(php_rindow_opencl_event_list_t) + zend_object_properties_size(class_type));
     zend_object_std_init(&intern->std, class_type);
     object_properties_init(&intern->std, class_type);
+    intern->signature = PHP_RINDOW_OPENCL_EVENT_LIST_SIGNATURE;
     intern->events = NULL;
     intern->num = 0;
     intern->std.handlers = &rindow_opencl_event_list_object_handlers;

@@ -31,10 +31,11 @@ modules
 run-tests.php
 composer.lock
 vendor/
-tests/*/*.diff
-tests/*/*.out
-tests/*/*.php
-tests/*/*.exp
-tests/*/*.log
-tests/*/*.sh
+tests/*.diff
+tests/*.out
+tests/*.php
+tests/*.exp
+tests/*.log
+tests/*.sh
 x64
+composer.lock

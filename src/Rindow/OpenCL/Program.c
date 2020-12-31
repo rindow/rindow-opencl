@@ -122,6 +122,7 @@ static zend_object* php_rindow_opencl_program_create_object(zend_class_entry* cl
     php_rindow_opencl_program_t* intern = NULL;
 
     intern = (php_rindow_opencl_program_t*)ecalloc(1, sizeof(php_rindow_opencl_program_t) + zend_object_properties_size(class_type));
+    intern->signature = PHP_RINDOW_OPENCL_PROGRAM_SIGNATURE;
     intern->program = NULL;
 
     zend_object_std_init(&intern->std, class_type);

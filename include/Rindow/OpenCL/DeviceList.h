@@ -2,8 +2,10 @@
 # define PHP_RINDOW_OPENCL_DEVICE_LIST_H
 
 #define PHP_RINDOW_OPENCL_DEVICE_LIST_CLASSNAME "Rindow\\OpenCL\\DeviceList"
+#define PHP_RINDOW_OPENCL_DEVICE_LIST_SIGNATURE 0x76444c4377646e52 // "RndwCLDv"
 
 typedef struct {
+    zend_long signature;
     cl_uint num;
     cl_device_id *devices;
     zend_object std;

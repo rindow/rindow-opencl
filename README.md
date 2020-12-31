@@ -23,7 +23,7 @@ Intel OpenCL drivers can be downloaded from site https://software.intel.com/cont
 Recommend environment
 =====================
 
-- LinearBuffer implements - rindow-openblas 0.1.6 or later. [sources](https://github.com/rindow/rindow-openblas), [binaries](https://github.com/rindow_openblas-binaries)
+- LinearBuffer implements - rindow-openblas 0.1.6 or later. [sources](https://github.com/rindow/rindow-openblas), [binaries](https://github.com/rindow_openblas/releases)
 - BLAS libray for OpenCL implements - rindow-clblast 0.1.0. [sources](https://github.com/rindow/rindow-clblast), [binaries](https://github.com/rindow-clblast/releases)
 - Matrix PHP library - rindow-math-matrix 1.0.8 or later. [sources](https://github.com/rindow/rindow-math-matrix)
 - Machine learning library on PHP - rindow-neuralnetworks [sources](https://github.com/rindow/rindow-neuralnetworks)
@@ -34,6 +34,7 @@ You can download and use pre-built Windows binaries.
 Download the binary for your version of PHP.
 
 - https://github.com/rindow/rindow-openblas-binaries
+- https://github.com/xianyi/OpenBLAS/releases
 - https://github.com/rindow/rindow-opencl/releases
 - https://github.com/rindow/rindow-clblast/releases
 - https://github.com/CNugteren/CLBlast/releases
@@ -43,11 +44,11 @@ Please download the following two binaries and extract.
 - The PHP extension of rindow-opencl that matches the php version.
 - The PHP extension of rindow-openblas that matches the php version.
 - The PHP extension of rindow-clblast that matches the php version.
-- DLL of flang library.
+- DLL of OpenBLAS library.
 - DLL of CLBlast library.
 
 Copy the shared library to the PHP extension directory and set it in php.ini.
-And flang DLL's path to Windows PATH environment variable.
+And OpenBLAS DLL's path to Windows PATH environment variable.
 
 ```shell
 C:\tmp>copy rindow_openblas.dll /path/to/php-installation-path/ext
@@ -56,7 +57,7 @@ C:\tmp>copy rindow_clblast.dll /path/to/php-installation-path/ext
 C:\tmp>echo extension=rindow_openblas.dll >> /path/to/php-installation-path/php.ini
 C:\tmp>echo extension=rindow_opencl.dll >> /path/to/php-installation-path/php.ini
 C:\tmp>echo extension=rindow_clblast.dll >> /path/to/php-installation-path/php.ini
-C:\tmp>PATH %PATH%;/path/to/flang/miniconda3-directory/Library/bin;/path/to/CLBlast-Library/lib
+C:\tmp>PATH %PATH%;/path/to/OpenBLAS/bin;/path/to/CLBlast-Library/lib
 C:\tmp>cd /same/app/directory
 C:\app\dir>composer require rindow/rindow-math-matrix
 ```
@@ -101,7 +102,7 @@ See https://github.com/rindow/rindow-openblas/ for more information.
 ```shell
 C:\tmp>copy rindow_openblas.dll /path/to/php-installation-path/ext
 C:\tmp>echo extension=rindow_openblas.dll >> /path/to/php-installation-path/php.ini
-C:\tmp>PATH %PATH%;/path/to/miniconda3-directory/Library/bin
+C:\tmp>PATH %PATH%;/path/to/OpenBLAS/bin
 ```
 
 ### Start php-sdk for target PHP version
