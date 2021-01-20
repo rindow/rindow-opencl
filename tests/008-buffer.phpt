@@ -287,16 +287,16 @@ echo "SUCCESS fill with invalid object arguments\n";
 $hostBuffer = new RindowTest\OpenCL\HostBuffer(
     16,NDArray::float32);
 foreach(range(0,15) as $value) {
-    $hostBuffer[$value] = $value;
+    $hostBuffer[$value] = 0;
 }
 $buffer2 = new Rindow\OpenCL\Buffer($context,intval(16*32/8),
     OpenCL::CL_MEM_READ_WRITE|OpenCL::CL_MEM_COPY_HOST_PTR,
     $hostBuffer);
-$buffer2->copy($queue,$buffer);
+$buffer->copy($queue,$buffer2);
 $queue->finish();
-$buffer->read($queue,$newHostBuffer);
+$buffer2->read($queue,$hostBuffer);
 foreach(range(0,15) as $value) {
-    assert($newHostBuffer[$value] == 123+($value%2));
+    assert($hostBuffer[$value] == 123+($value%2));
 }
 echo "SUCCESS copy\n";
 //
@@ -305,15 +305,15 @@ echo "SUCCESS copy\n";
 $hostBuffer = new RindowTest\OpenCL\HostBuffer(
     16,NDArray::float32);
 foreach(range(0,15) as $value) {
-    $hostBuffer[$value] = $value;
+    $hostBuffer[$value] = 0;
 }
 $buffer2 = new Rindow\OpenCL\Buffer($context,intval(16*32/8),
     OpenCL::CL_MEM_READ_WRITE|OpenCL::CL_MEM_COPY_HOST_PTR,
     $hostBuffer);
-$buffer2->copy($queue,$buffer,
+$buffer->copy($queue,$buffer2,
     $size=0,$offset=0,$src_offset=0,$events=null,$waitEvent=null);
 $queue->finish();
-$buffer->read($queue,$newHostBuffer);
+$buffer2->read($queue,$hostBuffer);
 foreach(range(0,15) as $value) {
     assert($newHostBuffer[$value] == 123+($value%2));
 }
@@ -327,6 +327,82 @@ $buffer = new Rindow\OpenCL\Buffer($context,intval(16*32/8),
 assert($buffer->dtype()==NDArray::float32);
 assert($buffer->value_size()==intval(32/8));
 echo "SUCCESS construct with explicit dtype\n";
+//
+// readRect
+//
+$hostBuffer = new RindowTest\OpenCL\HostBuffer(
+    27,NDArray::float32);
+$data = [ 99,99,99,  99,99,99,  99,99,99,
+          99,99,99,  99, 1, 2,  99, 3, 4,
+          99,99,99,  99, 5, 6,  99, 7, 8, ];
+foreach($data as $idx => $value) {
+    $hostBuffer[$idx] = $value;
+}
+$buffer = new Rindow\OpenCL\Buffer(
+    $context,
+    $hostBuffer->value_size()*count($hostBuffer),
+    OpenCL::CL_MEM_READ_WRITE|OpenCL::CL_MEM_COPY_HOST_PTR,
+    $hostBuffer);
+$subHostBuffer = new RindowTest\OpenCL\HostBuffer(
+    2*2*2,NDArray::float32);
+$value_size = $subHostBuffer->value_size();
+$buffer->readRect($queue,$subHostBuffer,[2*$value_size,2,2],
+    $hostBufferOffset=0,
+    $bufferOffsets=[1*$value_size,1,1],
+    null,
+    $buffer_row_pitch=$value_size*3,$buffer_slice_pitch=$value_size*3*3,
+    $host_row_pitch=$value_size*2,$host_slice_pitch=$value_size*2*2,
+    $blocking_read=true);
+$trues = [ 1,2, 3,4,
+           5,6, 7,8 ];
+foreach($trues as $idx => $value) {
+    assert($subHostBuffer[$idx] == $value);
+}
+echo "SUCCESS readRect\n";
+$data = [ -1,-2, -3,-4,
+          -5,-6, -7,-8 ];
+foreach($data as $idx => $value) {
+    $subHostBuffer[$idx] = $value;
+}
+$buffer->writeRect($queue,$subHostBuffer,[2*$value_size,2,2],
+    $hostBufferOffset=0,
+    $bufferOffsets=[1*$value_size,1,1],
+    null,
+    $buffer_row_pitch=$value_size*3,$buffer_slice_pitch=$value_size*3*3,
+    $host_row_pitch=$value_size*2,$host_slice_pitch=$value_size*2*2,
+    $blocking_write=true);
+$trues = [ 99,99,99,  99,99,99,  99,99,99,
+           99,99,99,  99,-1,-2,  99,-3,-4,
+           99,99,99,  99,-5,-6,  99,-7,-8, ];
+$buffer->read($queue,$hostBuffer);
+foreach($trues as $idx => $value) {
+    assert($hostBuffer[$idx] == $value);
+}
+echo "SUCCESS writeRect\n";
+$data = [ 0,0, 0,0,
+          0,0, 0,0 ];
+foreach($data as $idx => $value) {
+    $subHostBuffer[$idx] = $value;
+}
+$dstBuffer = new Rindow\OpenCL\Buffer(
+    $context,
+    $subHostBuffer->value_size()*count($subHostBuffer),
+    OpenCL::CL_MEM_READ_WRITE|OpenCL::CL_MEM_COPY_HOST_PTR,
+    $subHostBuffer);
+$buffer->copyRect($queue,$dstBuffer,[2*$value_size,2,2],
+    $src_origin=[1*$value_size,1,1],
+    $dst_origin=null,
+    $src_row_pitch=$value_size*3,$src_slice_pitch=$value_size*3*3,
+    $dst_row_pitch=$value_size*2,$dst_slice_pitch=$value_size*2*2,
+    );
+$queue->finish();
+$dstBuffer->read($queue,$subHostBuffer);
+$trues = [ -1,-2, -3,-4,
+           -5,-6, -7,-8 ];
+foreach($trues as $idx => $value) {
+    assert($subHostBuffer[$idx] == $value);
+}
+echo "SUCCESS copyRect\n";
 ?>
 --EXPECT--
 SUCCESS Pure buffer
@@ -351,3 +427,6 @@ SUCCESS fill with invalid object arguments
 SUCCESS copy
 SUCCESS copy with null arguments
 SUCCESS construct with explicit dtype
+SUCCESS readRect
+SUCCESS writeRect
+SUCCESS copyRect

@@ -20,44 +20,6 @@
 
 #include "php_rindow_opencl.h"
 
-static size_t * array_to_integers(
-    zval* array_obj_p, cl_uint *num_integers_p, int *errcode_ret)
-{
-    cl_uint num_integers;
-    size_t *integers;
-    zend_long long_integer;
-    zend_ulong idx;
-    zend_string *key;
-    zval *val;
-    cl_uint i=0;
-
-    num_integers = zend_array_count(Z_ARR_P(array_obj_p));
-    integers = ecalloc(num_integers,sizeof(size_t));
-
-    ZEND_HASH_FOREACH_KEY_VAL(Z_ARR_P(array_obj_p), idx, key, val) {
-        if(Z_TYPE_P(val) != IS_LONG) {
-            efree(integers);
-            zend_throw_exception(spl_ce_InvalidArgumentException, "the array must be array of integer", CL_INVALID_VALUE);
-            *errcode_ret = -2;
-            return NULL;
-        }
-        if(i<num_integers) {
-            long_integer = Z_LVAL_P(val);
-            if(long_integer<1) {
-                efree(integers);
-                zend_throw_exception(spl_ce_InvalidArgumentException, "dim value must be greater zero.", CL_INVALID_VALUE);
-                *errcode_ret = -3;
-                return NULL;
-            }
-            integers[i] = (size_t)long_integer;
-            i++;
-        }
-    } ZEND_HASH_FOREACH_END();
-    *num_integers_p = num_integers;
-    *errcode_ret = 0;
-    return integers;
-}
-
 static zend_object_handlers rindow_opencl_kernel_object_handlers;
 
 // destractor
@@ -296,8 +258,10 @@ static PHP_METHOD(Kernel, enqueueNDRange)
 
     command_queue_obj = Z_RINDOW_OPENCL_COMMAND_QUEUE_OBJ_P(command_queue_obj_p);
 
-    global_work_size = array_to_integers(
-        global_work_size_obj_p, &work_dim, &errcode_ret
+    work_dim = 0;
+    global_work_size = php_rindow_opencl_array_to_integers(
+        global_work_size_obj_p, &work_dim,
+        php_rindow_opencl_array_to_integers_constraint_greater_zero, &errcode_ret
     );
     if(errcode_ret!=CL_SUCCESS) {
         zend_throw_exception_ex(spl_ce_InvalidArgumentException, errcode_ret, "Invalid global work size. errcode=%d", errcode_ret);
@@ -308,9 +272,10 @@ static PHP_METHOD(Kernel, enqueueNDRange)
         return;
     }
     if(local_work_size_obj_p!=NULL && Z_TYPE_P(local_work_size_obj_p)==IS_ARRAY) {
-        cl_uint tmp_dim;
-        local_work_size = array_to_integers(
-            local_work_size_obj_p, &tmp_dim, &errcode_ret
+        cl_uint tmp_dim=0;
+        local_work_size = php_rindow_opencl_array_to_integers(
+            local_work_size_obj_p, &tmp_dim,
+            php_rindow_opencl_array_to_integers_constraint_greater_zero, &errcode_ret
         );
         if(errcode_ret!=CL_SUCCESS) {
             efree(global_work_size);
@@ -326,9 +291,10 @@ static PHP_METHOD(Kernel, enqueueNDRange)
     }
 
     if(global_work_offset_obj_p!=NULL && Z_TYPE_P(global_work_offset_obj_p)==IS_ARRAY) {
-        cl_uint tmp_dim;
-        global_work_offset = array_to_integers(
-            global_work_offset_obj_p, &tmp_dim, &errcode_ret
+        cl_uint tmp_dim=0;
+        global_work_offset = php_rindow_opencl_array_to_integers(
+            global_work_offset_obj_p, &tmp_dim,
+            php_rindow_opencl_array_to_integers_constraint_greater_zero, &errcode_ret
         );
         if(errcode_ret!=CL_SUCCESS) {
             efree(global_work_size);

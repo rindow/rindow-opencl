@@ -226,7 +226,7 @@ static PHP_METHOD(Buffer, read)
 
     ZEND_PARSE_PARAMETERS_START_EX(ZEND_PARSE_PARAMS_THROW, 2, 8)
         Z_PARAM_OBJECT_OF_CLASS(command_queue_obj_p,php_rindow_opencl_command_queue_ce)
-        Z_PARAM_OBJECT_EX(host_buffer_obj_p,1,0)  // Interop\Polite\Math\Matrix\LinearBuffer
+        Z_PARAM_OBJECT(host_buffer_obj_p)  // Interop\Polite\Math\Matrix\LinearBuffer
         Z_PARAM_OPTIONAL
         Z_PARAM_LONG(size)
         Z_PARAM_LONG(offset)
@@ -300,6 +300,255 @@ static PHP_METHOD(Buffer, read)
 }
 /* }}} */
 
+/* Method Rindow\OpenCL\Buffer::readRect(
+    CommandQueue $command_queue,
+    Interop\Polite\Math\LinearBuffer $hostBuffer  // host buffer assigned
+    array<int> $region, // [width,height,depth],
+    int        $host_buffer_offset=0,
+    array<int> $buffer_origin=[0,0,0],
+    array<int> $host_origin=[0,0,0],
+    bool     $blocking_read=true,
+    EventList $events=null,
+    EventList $event_wait_list=null
+) : void {{{ */
+static PHP_METHOD(Buffer, readRect)
+{
+    zval* command_queue_obj_p=NULL;
+    zval* host_buffer_obj_p=NULL;
+    zval* region_obj_p=NULL;
+    zend_long host_buffer_offset=0;
+    zval* buffer_offset_obj_p=NULL;
+    zval* host_offset_obj_p=NULL;
+    zend_long buffer_row_pitch=0;
+    zend_long buffer_slice_pitch=0;
+    zend_long host_row_pitch=0;
+    zend_long host_slice_pitch=0;
+    zend_bool blocking_read=TRUE;
+    zend_bool blocking_read_is_null=TRUE;
+    zval* events_obj_p=NULL;
+    zval* event_wait_list_obj_p=NULL;
+    php_rindow_opencl_buffer_t* intern;
+    php_rindow_opencl_command_queue_t* command_queue_obj;
+    php_interop_polite_math_matrix_linear_buffer_t* host_buffer_obj;
+    size_t* region;
+    size_t* host_offsets;
+    size_t* buffer_offsets;
+    php_rindow_opencl_event_list_t* event_wait_list_obj;
+    char *host_ptr=NULL;
+    cl_event *event_wait_list=NULL;
+    cl_uint num_events_in_wait_list=0;
+    cl_event event_ret;
+    cl_event *event_p=NULL;
+    cl_int errcode_ret=0;
+
+    ZEND_PARSE_PARAMETERS_START_EX(ZEND_PARSE_PARAMS_THROW, 3, 13)
+        Z_PARAM_OBJECT_OF_CLASS(command_queue_obj_p,php_rindow_opencl_command_queue_ce)
+        Z_PARAM_OBJECT(host_buffer_obj_p)  // Interop\Polite\Math\Matrix\LinearBuffer
+        Z_PARAM_ARRAY(region_obj_p)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_LONG(host_buffer_offset)
+        Z_PARAM_ARRAY_EX(buffer_offset_obj_p,1,0)
+        Z_PARAM_ARRAY_EX(host_offset_obj_p,1,0)
+        Z_PARAM_LONG(buffer_row_pitch)
+        Z_PARAM_LONG(buffer_slice_pitch)
+        Z_PARAM_LONG(host_row_pitch)
+        Z_PARAM_LONG(host_slice_pitch)
+        Z_PARAM_BOOL_EX(blocking_read, blocking_read_is_null, 1, 0)
+        Z_PARAM_OBJECT_OF_CLASS_EX(events_obj_p,php_rindow_opencl_event_list_ce,1,0)
+        Z_PARAM_OBJECT_OF_CLASS_EX(event_wait_list_obj_p,php_rindow_opencl_event_list_ce,1,0)
+    ZEND_PARSE_PARAMETERS_END();
+
+    if(blocking_read_is_null) {
+        blocking_read = TRUE;
+    }
+
+    command_queue_obj = Z_RINDOW_OPENCL_COMMAND_QUEUE_OBJ_P(command_queue_obj_p);
+    if(host_buffer_obj_p==NULL) {
+        zend_throw_exception(spl_ce_InvalidArgumentException, "Host buffer must be LinearBuffer object.", CL_INVALID_VALUE);
+        return;
+    }
+
+    host_buffer_obj = Z_INTEROP_POLITE_MATH_MATRIX_LINEAR_BUFFER_OBJ_P(host_buffer_obj_p);
+    if(php_rindow_opencl_assert_host_buffer_type(host_buffer_obj, "hostBuffer")) {
+        return;
+    }
+    if(host_buffer_obj->data==NULL) {
+        zend_throw_exception(spl_ce_InvalidArgumentException, "Host buffer is not initialized.", CL_INVALID_VALUE);
+        return;
+    }
+
+    {
+        cl_uint tmp_dim = 3;
+        region = php_rindow_opencl_array_to_integers(
+            region_obj_p, &tmp_dim,
+            php_rindow_opencl_array_to_integers_constraint_greater_zero,
+            &errcode_ret
+        );
+        if(errcode_ret!=CL_SUCCESS) {
+            zend_throw_exception_ex(spl_ce_InvalidArgumentException, errcode_ret, "Invalid region size. errcode=%d", errcode_ret);
+            return;
+        }
+        for(int i=0;i<3;i++) {
+            if(region[i]==0) {
+                region[i] = 1;
+            }
+        }
+    }
+
+    if(buffer_offset_obj_p!=NULL && Z_TYPE_P(buffer_offset_obj_p)==IS_ARRAY) {
+        cl_uint tmp_dim = 3;
+        buffer_offsets = php_rindow_opencl_array_to_integers(
+            buffer_offset_obj_p, &tmp_dim,
+            php_rindow_opencl_array_to_integers_constraint_greater_or_equal_zero,
+            &errcode_ret
+        );
+        if(errcode_ret!=CL_SUCCESS) {
+            efree(region);
+            zend_throw_exception_ex(spl_ce_InvalidArgumentException, errcode_ret, "Invalid buffer_offsets. errcode=%d", errcode_ret);
+            return;
+        }
+    } else {
+        buffer_offsets = ecalloc(3,sizeof(size_t));
+        memset(buffer_offsets,0,3*sizeof(size_t));
+    }
+
+    if(host_offset_obj_p!=NULL && Z_TYPE_P(host_offset_obj_p)==IS_ARRAY) {
+        cl_uint tmp_dim = 3;
+        host_offsets = php_rindow_opencl_array_to_integers(
+            host_offset_obj_p, &tmp_dim,
+            php_rindow_opencl_array_to_integers_constraint_greater_or_equal_zero,
+            &errcode_ret
+        );
+        if(errcode_ret!=CL_SUCCESS) {
+            efree(region);
+            efree(buffer_offsets);
+            zend_throw_exception_ex(spl_ce_InvalidArgumentException, errcode_ret, "Invalid host_offsets. errcode=%d", errcode_ret);
+            return;
+        }
+    } else {
+        host_offsets = ecalloc(3,sizeof(size_t));
+        memset(host_offsets,0,3*sizeof(size_t));
+    }
+
+    if(buffer_row_pitch<0) {
+        efree(region);
+        efree(buffer_offsets);
+        efree(host_offsets);
+        zend_throw_exception(spl_ce_InvalidArgumentException, "buffer_row_pitch must be greater then or equal zero.", CL_INVALID_VALUE);
+        return;
+    } else if(buffer_row_pitch==0) {
+        buffer_row_pitch = region[0];
+    }
+
+    if(buffer_slice_pitch<0) {
+        efree(region);
+        efree(buffer_offsets);
+        efree(host_offsets);
+        zend_throw_exception(spl_ce_InvalidArgumentException, "buffer_slice_pitch must be greater then or equal zero.", CL_INVALID_VALUE);
+        return;
+    } else if(buffer_slice_pitch==0) {
+        buffer_slice_pitch = region[1]*buffer_row_pitch;
+    }
+
+    if(host_row_pitch<0) {
+        efree(region);
+        efree(buffer_offsets);
+        efree(host_offsets);
+        zend_throw_exception(spl_ce_InvalidArgumentException, "host_row_pitch must be greater then or equal zero.", CL_INVALID_VALUE);
+        return;
+    } else if(host_row_pitch==0) {
+        host_row_pitch = region[0];
+    }
+
+    if(host_slice_pitch<0) {
+        efree(region);
+        efree(buffer_offsets);
+        efree(host_offsets);
+        zend_throw_exception(spl_ce_InvalidArgumentException, "host_slice_pitch must be greater then or equal zero.", CL_INVALID_VALUE);
+        return;
+    } else if(host_slice_pitch==0) {
+        host_slice_pitch = region[1]*host_row_pitch;
+    }
+
+    {
+        zend_long pos_max
+            = (host_offsets[2]+region[2]-1)*host_slice_pitch
+            + (host_offsets[1]+region[1]-1)*host_row_pitch
+            + (host_offsets[0]+region[0]-1);
+        if(pos_max >= (((zend_long)(host_buffer_obj->size) - host_buffer_offset) * host_buffer_obj->value_size)) {
+            efree(region);
+            efree(buffer_offsets);
+            efree(host_offsets);
+            zend_throw_exception(spl_ce_InvalidArgumentException, "Host buffer is too small.", CL_INVALID_VALUE);
+            return;
+        }
+    }
+    host_ptr = host_buffer_obj->data;
+    host_ptr += host_buffer_offset * host_buffer_obj->value_size;
+
+    intern = Z_RINDOW_OPENCL_BUFFER_OBJ_P(getThis());
+    {
+        zend_long pos_max
+            = (buffer_offsets[2]+region[2]-1)*buffer_slice_pitch
+            + (buffer_offsets[1]+region[1]-1)*buffer_row_pitch
+            + (buffer_offsets[0]+region[0]-1);
+        if(pos_max >= (zend_long)(intern->size)) {
+            efree(region);
+            efree(buffer_offsets);
+            efree(host_offsets);
+            zend_throw_exception(spl_ce_InvalidArgumentException, "buffer is too small.", CL_INVALID_VALUE);
+            return;
+        }
+    }
+
+    if(events_obj_p!=NULL && Z_TYPE_P(events_obj_p)==IS_OBJECT) {
+        event_p = &event_ret;
+    }
+
+    if(event_wait_list_obj_p!=NULL && Z_TYPE_P(event_wait_list_obj_p)==IS_OBJECT) {
+        event_wait_list_obj = Z_RINDOW_OPENCL_EVENT_LIST_OBJ_P(event_wait_list_obj_p);
+        num_events_in_wait_list = event_wait_list_obj->num;
+        event_wait_list = event_wait_list_obj->events;
+    }
+
+    errcode_ret = clEnqueueReadBufferRect(
+        command_queue_obj->command_queue,
+        intern->buffer,
+        (cl_bool)blocking_read,
+        buffer_offsets,
+        host_offsets,
+        region,
+        (size_t)buffer_row_pitch,
+        (size_t)buffer_slice_pitch,
+        (size_t)host_row_pitch,
+        (size_t)host_slice_pitch,
+        host_ptr,
+        num_events_in_wait_list,
+        event_wait_list,
+        event_p);
+
+    if(errcode_ret!=CL_SUCCESS) {
+        efree(region);
+        efree(buffer_offsets);
+        efree(host_offsets);
+        zend_throw_exception_ex(spl_ce_RuntimeException, errcode_ret, "clEnqueueReadBufferRect Error errcode=%d", errcode_ret);
+        return;
+    }
+
+    // append event to events
+    if(php_rindow_opencl_append_event(events_obj_p, event_p)) {
+        efree(region);
+        efree(buffer_offsets);
+        efree(host_offsets);
+        return;
+    }
+
+    efree(region);
+    efree(buffer_offsets);
+    efree(host_offsets);
+}
+/* }}} */
+
 /* Method Rindow\OpenCL\Buffer::write(
     CommandQueue $command_queue,
     Interop\Polite\Math\LinearBuffer $hostBuffer  // host buffer assigned
@@ -334,7 +583,7 @@ static PHP_METHOD(Buffer, write)
 
     ZEND_PARSE_PARAMETERS_START_EX(ZEND_PARSE_PARAMS_THROW, 2, 8)
         Z_PARAM_OBJECT_OF_CLASS(command_queue_obj_p,php_rindow_opencl_command_queue_ce)
-        Z_PARAM_OBJECT_EX(host_buffer_obj_p,1,0)  // Interop\Polite\Math\Matrix\LinearBuffer
+        Z_PARAM_OBJECT(host_buffer_obj_p)  // Interop\Polite\Math\Matrix\LinearBuffer
         Z_PARAM_OPTIONAL
         Z_PARAM_LONG(size)
         Z_PARAM_LONG(offset)
@@ -410,6 +659,255 @@ static PHP_METHOD(Buffer, write)
 }
 /* }}} */
 
+/* Method Rindow\OpenCL\Buffer::writeRect(
+    CommandQueue $command_queue,
+    Interop\Polite\Math\LinearBuffer $hostBuffer  // host buffer assigned
+    array<int> $region, // [width,height,depth],
+    int        $host_buffer_offset=0,
+    array<int> $buffer_origin=[0,0,0],
+    array<int> $host_origin=[0,0,0],
+    bool     $blocking_write=true,
+    EventList $events=null,
+    EventList $event_wait_list=null
+) : void {{{ */
+static PHP_METHOD(Buffer, writeRect)
+{
+    zval* command_queue_obj_p=NULL;
+    zval* host_buffer_obj_p=NULL;
+    zval* region_obj_p=NULL;
+    zend_long host_buffer_offset=0;
+    zval* buffer_offset_obj_p=NULL;
+    zval* host_offset_obj_p=NULL;
+    zend_long buffer_row_pitch=0;
+    zend_long buffer_slice_pitch=0;
+    zend_long host_row_pitch=0;
+    zend_long host_slice_pitch=0;
+    zend_bool blocking_write=TRUE;
+    zend_bool blocking_write_is_null=TRUE;
+    zval* events_obj_p=NULL;
+    zval* event_wait_list_obj_p=NULL;
+    php_rindow_opencl_buffer_t* intern;
+    php_rindow_opencl_command_queue_t* command_queue_obj;
+    php_interop_polite_math_matrix_linear_buffer_t* host_buffer_obj;
+    size_t* region;
+    size_t* host_offsets;
+    size_t* buffer_offsets;
+    php_rindow_opencl_event_list_t* event_wait_list_obj;
+    char *host_ptr=NULL;
+    cl_event *event_wait_list=NULL;
+    cl_uint num_events_in_wait_list=0;
+    cl_event event_ret;
+    cl_event *event_p=NULL;
+    cl_int errcode_ret=0;
+
+    ZEND_PARSE_PARAMETERS_START_EX(ZEND_PARSE_PARAMS_THROW, 3, 13)
+        Z_PARAM_OBJECT_OF_CLASS(command_queue_obj_p,php_rindow_opencl_command_queue_ce)
+        Z_PARAM_OBJECT(host_buffer_obj_p)  // Interop\Polite\Math\Matrix\LinearBuffer
+        Z_PARAM_ARRAY(region_obj_p)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_LONG(host_buffer_offset)
+        Z_PARAM_ARRAY_EX(buffer_offset_obj_p,1,0)
+        Z_PARAM_ARRAY_EX(host_offset_obj_p,1,0)
+        Z_PARAM_LONG(buffer_row_pitch)
+        Z_PARAM_LONG(buffer_slice_pitch)
+        Z_PARAM_LONG(host_row_pitch)
+        Z_PARAM_LONG(host_slice_pitch)
+        Z_PARAM_BOOL_EX(blocking_write, blocking_write_is_null, 1, 0)
+        Z_PARAM_OBJECT_OF_CLASS_EX(events_obj_p,php_rindow_opencl_event_list_ce,1,0)
+        Z_PARAM_OBJECT_OF_CLASS_EX(event_wait_list_obj_p,php_rindow_opencl_event_list_ce,1,0)
+    ZEND_PARSE_PARAMETERS_END();
+
+    if(blocking_write_is_null) {
+        blocking_write = TRUE;
+    }
+
+    command_queue_obj = Z_RINDOW_OPENCL_COMMAND_QUEUE_OBJ_P(command_queue_obj_p);
+    if(host_buffer_obj_p==NULL) {
+        zend_throw_exception(spl_ce_InvalidArgumentException, "Host buffer must be LinearBuffer object.", CL_INVALID_VALUE);
+        return;
+    }
+
+    host_buffer_obj = Z_INTEROP_POLITE_MATH_MATRIX_LINEAR_BUFFER_OBJ_P(host_buffer_obj_p);
+    if(php_rindow_opencl_assert_host_buffer_type(host_buffer_obj, "hostBuffer")) {
+        return;
+    }
+    if(host_buffer_obj->data==NULL) {
+        zend_throw_exception(spl_ce_InvalidArgumentException, "Host buffer is not initialized.", CL_INVALID_VALUE);
+        return;
+    }
+
+    {
+        cl_uint tmp_dim = 3;
+        region = php_rindow_opencl_array_to_integers(
+            region_obj_p, &tmp_dim,
+            php_rindow_opencl_array_to_integers_constraint_greater_zero,
+            &errcode_ret
+        );
+        if(errcode_ret!=CL_SUCCESS) {
+            zend_throw_exception_ex(spl_ce_InvalidArgumentException, errcode_ret, "Invalid region size. errcode=%d", errcode_ret);
+            return;
+        }
+        for(int i=0;i<3;i++) {
+            if(region[i]==0) {
+                region[i] = 1;
+            }
+        }
+    }
+
+    if(buffer_offset_obj_p!=NULL && Z_TYPE_P(buffer_offset_obj_p)==IS_ARRAY) {
+        cl_uint tmp_dim = 3;
+        buffer_offsets = php_rindow_opencl_array_to_integers(
+            buffer_offset_obj_p, &tmp_dim,
+            php_rindow_opencl_array_to_integers_constraint_greater_or_equal_zero,
+            &errcode_ret
+        );
+        if(errcode_ret!=CL_SUCCESS) {
+            efree(region);
+            zend_throw_exception_ex(spl_ce_InvalidArgumentException, errcode_ret, "Invalid buffer_offsets. errcode=%d", errcode_ret);
+            return;
+        }
+    } else {
+        buffer_offsets = ecalloc(3,sizeof(size_t));
+        memset(buffer_offsets,0,3*sizeof(size_t));
+    }
+
+    if(host_offset_obj_p!=NULL && Z_TYPE_P(host_offset_obj_p)==IS_ARRAY) {
+        cl_uint tmp_dim = 3;
+        host_offsets = php_rindow_opencl_array_to_integers(
+            host_offset_obj_p, &tmp_dim,
+            php_rindow_opencl_array_to_integers_constraint_greater_or_equal_zero,
+            &errcode_ret
+        );
+        if(errcode_ret!=CL_SUCCESS) {
+            efree(region);
+            efree(buffer_offsets);
+            zend_throw_exception_ex(spl_ce_InvalidArgumentException, errcode_ret, "Invalid host_offsets. errcode=%d", errcode_ret);
+            return;
+        }
+    } else {
+        host_offsets = ecalloc(3,sizeof(size_t));
+        memset(host_offsets,0,3*sizeof(size_t));
+    }
+
+    if(buffer_row_pitch<0) {
+        efree(region);
+        efree(buffer_offsets);
+        efree(host_offsets);
+        zend_throw_exception(spl_ce_InvalidArgumentException, "buffer_row_pitch must be greater then or equal zero.", CL_INVALID_VALUE);
+        return;
+    } else if(buffer_row_pitch==0) {
+        buffer_row_pitch = region[0];
+    }
+
+    if(buffer_slice_pitch<0) {
+        efree(region);
+        efree(buffer_offsets);
+        efree(host_offsets);
+        zend_throw_exception(spl_ce_InvalidArgumentException, "buffer_slice_pitch must be greater then or equal zero.", CL_INVALID_VALUE);
+        return;
+    } else if(buffer_slice_pitch==0) {
+        buffer_slice_pitch = region[1]*buffer_row_pitch;
+    }
+
+    if(host_row_pitch<0) {
+        efree(region);
+        efree(buffer_offsets);
+        efree(host_offsets);
+        zend_throw_exception(spl_ce_InvalidArgumentException, "host_row_pitch must be greater then or equal zero.", CL_INVALID_VALUE);
+        return;
+    } else if(host_row_pitch==0) {
+        host_row_pitch = region[0];
+    }
+
+    if(host_slice_pitch<0) {
+        efree(region);
+        efree(buffer_offsets);
+        efree(host_offsets);
+        zend_throw_exception(spl_ce_InvalidArgumentException, "host_slice_pitch must be greater then or equal zero.", CL_INVALID_VALUE);
+        return;
+    } else if(host_slice_pitch==0) {
+        host_slice_pitch = region[1]*host_row_pitch;
+    }
+
+    {
+        zend_long pos_max
+            = (host_offsets[2]+region[2]-1)*host_slice_pitch
+            + (host_offsets[1]+region[1]-1)*host_row_pitch
+            + (host_offsets[0]+region[0]-1);
+        if(pos_max >= (((zend_long)(host_buffer_obj->size) - host_buffer_offset) * host_buffer_obj->value_size)) {
+            efree(region);
+            efree(buffer_offsets);
+            efree(host_offsets);
+            zend_throw_exception(spl_ce_InvalidArgumentException, "Host buffer is too small.", CL_INVALID_VALUE);
+            return;
+        }
+    }
+    host_ptr = host_buffer_obj->data;
+    host_ptr += host_buffer_offset * host_buffer_obj->value_size;
+
+    intern = Z_RINDOW_OPENCL_BUFFER_OBJ_P(getThis());
+    {
+        zend_long pos_max
+            = (buffer_offsets[2]+region[2]-1)*buffer_slice_pitch
+            + (buffer_offsets[1]+region[1]-1)*buffer_row_pitch
+            + (buffer_offsets[0]+region[0]-1);
+        if(pos_max >= (zend_long)(intern->size)) {
+            efree(region);
+            efree(buffer_offsets);
+            efree(host_offsets);
+            zend_throw_exception(spl_ce_InvalidArgumentException, "buffer is too small.", CL_INVALID_VALUE);
+            return;
+        }
+    }
+
+    if(events_obj_p!=NULL && Z_TYPE_P(events_obj_p)==IS_OBJECT) {
+        event_p = &event_ret;
+    }
+
+    if(event_wait_list_obj_p!=NULL && Z_TYPE_P(event_wait_list_obj_p)==IS_OBJECT) {
+        event_wait_list_obj = Z_RINDOW_OPENCL_EVENT_LIST_OBJ_P(event_wait_list_obj_p);
+        num_events_in_wait_list = event_wait_list_obj->num;
+        event_wait_list = event_wait_list_obj->events;
+    }
+
+    errcode_ret = clEnqueueWriteBufferRect(
+        command_queue_obj->command_queue,
+        intern->buffer,
+        (cl_bool)blocking_write,
+        buffer_offsets,
+        host_offsets,
+        region,
+        (size_t)buffer_row_pitch,
+        (size_t)buffer_slice_pitch,
+        (size_t)host_row_pitch,
+        (size_t)host_slice_pitch,
+        host_ptr,
+        num_events_in_wait_list,
+        event_wait_list,
+        event_p);
+
+    if(errcode_ret!=CL_SUCCESS) {
+        efree(region);
+        efree(buffer_offsets);
+        efree(host_offsets);
+        zend_throw_exception_ex(spl_ce_RuntimeException, errcode_ret, "clEnqueueReadBufferRect Error errcode=%d", errcode_ret);
+        return;
+    }
+
+    // append event to events
+    if(php_rindow_opencl_append_event(events_obj_p, event_p)) {
+        efree(region);
+        efree(buffer_offsets);
+        efree(host_offsets);
+        return;
+    }
+
+    efree(region);
+    efree(buffer_offsets);
+    efree(host_offsets);
+}
+/* }}} */
+
 /* Method Rindow\OpenCL\Buffer::fill(
     CommandQueue $command_queue,
     Interop\Polite\Math\LinearBuffer $patternBuffer  // host buffer assigned
@@ -443,7 +941,7 @@ static PHP_METHOD(Buffer, fill)
 
     ZEND_PARSE_PARAMETERS_START_EX(ZEND_PARSE_PARAMS_THROW, 2, 8)
         Z_PARAM_OBJECT_OF_CLASS(command_queue_obj_p,php_rindow_opencl_command_queue_ce)
-        Z_PARAM_OBJECT_EX(pattern_buffer_obj_p,1,0)  // Interop\Polite\Math\Matrix\LinearBuffer
+        Z_PARAM_OBJECT(pattern_buffer_obj_p)  // Interop\Polite\Math\Matrix\LinearBuffer
         Z_PARAM_OPTIONAL
         Z_PARAM_LONG(size)
         Z_PARAM_LONG(offset)
@@ -514,25 +1012,25 @@ static PHP_METHOD(Buffer, fill)
 
 /* Method Rindow\OpenCL\Buffer::copy(
     CommandQueue $command_queue,
-    Rindow\OpenCL\Buffer $src_buffer  // source buffer
+    Rindow\OpenCL\Buffer $dst_buffer  // source buffer
     int      $size=0,
     int      $offset=0,
-    int      $src_offset=0,
+    int      $dst_offset=0,
     EventList $events=null,
     EventList $event_wait_list=null
 ) : void {{{ */
 static PHP_METHOD(Buffer, copy)
 {
     zval* command_queue_obj_p=NULL;
-    zval* src_buffer_obj_p=NULL;
+    zval* dst_buffer_obj_p=NULL;
     zend_long size=0;
-    zend_long dst_offset=0;
     zend_long src_offset=0;
+    zend_long dst_offset=0;
     zval* events_obj_p=NULL;
     zval* event_wait_list_obj_p=NULL;
     php_rindow_opencl_command_queue_t* command_queue_obj;
-    php_rindow_opencl_buffer_t* dst_buffer_obj;
     php_rindow_opencl_buffer_t* src_buffer_obj;
+    php_rindow_opencl_buffer_t* dst_buffer_obj;
     php_rindow_opencl_event_list_t* event_wait_list_obj;
     cl_int errcode_ret=0;
     cl_event *event_wait_list=NULL;
@@ -542,18 +1040,18 @@ static PHP_METHOD(Buffer, copy)
 
     ZEND_PARSE_PARAMETERS_START_EX(ZEND_PARSE_PARAMS_THROW, 2, 7)
         Z_PARAM_OBJECT_OF_CLASS(command_queue_obj_p,php_rindow_opencl_command_queue_ce)
-        Z_PARAM_OBJECT_OF_CLASS(src_buffer_obj_p,php_rindow_opencl_buffer_ce)
+        Z_PARAM_OBJECT_OF_CLASS(dst_buffer_obj_p,php_rindow_opencl_buffer_ce)
         Z_PARAM_OPTIONAL
         Z_PARAM_LONG(size)
-        Z_PARAM_LONG(dst_offset)
         Z_PARAM_LONG(src_offset)
+        Z_PARAM_LONG(dst_offset)
         Z_PARAM_OBJECT_OF_CLASS_EX(events_obj_p,php_rindow_opencl_event_list_ce,1,0)
         Z_PARAM_OBJECT_OF_CLASS_EX(event_wait_list_obj_p,php_rindow_opencl_event_list_ce,1,0)
     ZEND_PARSE_PARAMETERS_END();
 
     command_queue_obj = Z_RINDOW_OPENCL_COMMAND_QUEUE_OBJ_P(command_queue_obj_p);
-    src_buffer_obj = Z_RINDOW_OPENCL_BUFFER_OBJ_P(src_buffer_obj_p);
-    dst_buffer_obj = Z_RINDOW_OPENCL_BUFFER_OBJ_P(getThis());
+    src_buffer_obj = Z_RINDOW_OPENCL_BUFFER_OBJ_P(getThis());
+    dst_buffer_obj = Z_RINDOW_OPENCL_BUFFER_OBJ_P(dst_buffer_obj_p);
     if(size==0) {
         size = dst_buffer_obj->size;
     }
@@ -594,6 +1092,238 @@ static PHP_METHOD(Buffer, copy)
 }
 /* }}} */
 
+/* Method Rindow\OpenCL\Buffer::copyRect(
+    CommandQueue $command_queue,
+    Rindow\OpenCL\Buffer $src_buffer  // source buffer
+    array<int> $region, // [width,height,depth],
+    int        $host_buffer_offset=0,
+    array<int> $buffer_origin=[0,0,0],
+    array<int> $host_origin=[0,0,0],
+    bool     $blocking_write=true,
+    EventList $events=null,
+    EventList $event_wait_list=null
+) : void {{{ */
+static PHP_METHOD(Buffer, copyRect)
+{
+    zval* command_queue_obj_p=NULL;
+    zval* src_buffer_obj_p=NULL;
+    zval* region_obj_p=NULL;
+    zval* src_origin_obj_p=NULL;
+    zval* dst_origin_obj_p=NULL;
+    zend_long src_row_pitch=0;
+    zend_long src_slice_pitch=0;
+    zend_long dst_row_pitch=0;
+    zend_long dst_slice_pitch=0;
+    zval* events_obj_p=NULL;
+    zval* event_wait_list_obj_p=NULL;
+    php_rindow_opencl_command_queue_t* command_queue_obj;
+    php_rindow_opencl_buffer_t* src_buffer_obj;
+    php_rindow_opencl_buffer_t* dst_buffer_obj;
+    size_t* region;
+    size_t* src_origins;
+    size_t* dst_origins;
+    php_rindow_opencl_event_list_t* event_wait_list_obj;
+    cl_event *event_wait_list=NULL;
+    cl_uint num_events_in_wait_list=0;
+    cl_event event_ret;
+    cl_event *event_p=NULL;
+    cl_int errcode_ret=0;
+
+    ZEND_PARSE_PARAMETERS_START_EX(ZEND_PARSE_PARAMS_THROW, 3, 11)
+        Z_PARAM_OBJECT_OF_CLASS(command_queue_obj_p,php_rindow_opencl_command_queue_ce)
+        Z_PARAM_OBJECT_OF_CLASS(src_buffer_obj_p,php_rindow_opencl_buffer_ce)
+        Z_PARAM_ARRAY(region_obj_p)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_ARRAY_EX(src_origin_obj_p,1,0)
+        Z_PARAM_ARRAY_EX(dst_origin_obj_p,1,0)
+        Z_PARAM_LONG(src_row_pitch)
+        Z_PARAM_LONG(src_slice_pitch)
+        Z_PARAM_LONG(dst_row_pitch)
+        Z_PARAM_LONG(dst_slice_pitch)
+        Z_PARAM_OBJECT_OF_CLASS_EX(events_obj_p,php_rindow_opencl_event_list_ce,1,0)
+        Z_PARAM_OBJECT_OF_CLASS_EX(event_wait_list_obj_p,php_rindow_opencl_event_list_ce,1,0)
+    ZEND_PARSE_PARAMETERS_END();
+
+    command_queue_obj = Z_RINDOW_OPENCL_COMMAND_QUEUE_OBJ_P(command_queue_obj_p);
+
+    src_buffer_obj = Z_RINDOW_OPENCL_BUFFER_OBJ_P(getThis());
+    dst_buffer_obj = Z_RINDOW_OPENCL_BUFFER_OBJ_P(src_buffer_obj_p);
+    if(src_buffer_obj->buffer==NULL) {
+        zend_throw_exception(spl_ce_InvalidArgumentException, "Source buffer is not initialized.", CL_INVALID_VALUE);
+        return;
+    }
+    if(dst_buffer_obj->buffer==NULL) {
+        zend_throw_exception(spl_ce_InvalidArgumentException, "Destination buffer is not initialized.", CL_INVALID_VALUE);
+        return;
+    }
+
+    {
+        cl_uint tmp_dim = 3;
+        region = php_rindow_opencl_array_to_integers(
+            region_obj_p, &tmp_dim,
+            php_rindow_opencl_array_to_integers_constraint_greater_zero,
+            &errcode_ret
+        );
+        if(errcode_ret!=CL_SUCCESS) {
+            zend_throw_exception_ex(spl_ce_InvalidArgumentException, errcode_ret, "Invalid region size. errcode=%d", errcode_ret);
+            return;
+        }
+        for(int i=0;i<3;i++) {
+            if(region[i]==0) {
+                region[i] = 1;
+            }
+        }
+    }
+
+    if(src_origin_obj_p!=NULL && Z_TYPE_P(src_origin_obj_p)==IS_ARRAY) {
+        cl_uint tmp_dim = 3;
+        src_origins = php_rindow_opencl_array_to_integers(
+            src_origin_obj_p, &tmp_dim,
+            php_rindow_opencl_array_to_integers_constraint_greater_or_equal_zero,
+            &errcode_ret
+        );
+        if(errcode_ret!=CL_SUCCESS) {
+            efree(region);
+            zend_throw_exception_ex(spl_ce_InvalidArgumentException, errcode_ret, "Invalid source origin. errcode=%d", errcode_ret);
+            return;
+        }
+    } else {
+        src_origins = ecalloc(3,sizeof(size_t));
+        memset(src_origins,0,3*sizeof(size_t));
+    }
+
+    if(dst_origin_obj_p!=NULL && Z_TYPE_P(dst_origin_obj_p)==IS_ARRAY) {
+        cl_uint tmp_dim = 3;
+        dst_origins = php_rindow_opencl_array_to_integers(
+            dst_origin_obj_p, &tmp_dim,
+            php_rindow_opencl_array_to_integers_constraint_greater_or_equal_zero,
+            &errcode_ret
+        );
+        if(errcode_ret!=CL_SUCCESS) {
+            efree(region);
+            efree(src_origins);
+            zend_throw_exception_ex(spl_ce_InvalidArgumentException, errcode_ret, "Invalid destination origin. errcode=%d", errcode_ret);
+            return;
+        }
+    } else {
+        dst_origins = ecalloc(3,sizeof(size_t));
+        memset(dst_origins,0,3*sizeof(size_t));
+    }
+
+    if(src_row_pitch<0) {
+        efree(region);
+        efree(src_origins);
+        efree(dst_origins);
+        zend_throw_exception(spl_ce_InvalidArgumentException, "src_row_pitch must be greater then or equal zero.", CL_INVALID_VALUE);
+        return;
+    } else if(src_row_pitch==0) {
+        src_row_pitch = region[0];
+    }
+
+    if(src_slice_pitch<0) {
+        efree(region);
+        efree(src_origins);
+        efree(dst_origins);
+        zend_throw_exception(spl_ce_InvalidArgumentException, "src_slice_pitch must be greater then or equal zero.", CL_INVALID_VALUE);
+        return;
+    } else if(src_slice_pitch==0) {
+        src_slice_pitch = region[1]*src_row_pitch;
+    }
+
+    if(dst_row_pitch<0) {
+        efree(region);
+        efree(src_origins);
+        efree(dst_origins);
+        zend_throw_exception(spl_ce_InvalidArgumentException, "dst_row_pitch must be greater then or equal zero.", CL_INVALID_VALUE);
+        return;
+    } else if(dst_row_pitch==0) {
+        dst_row_pitch = region[0];
+    }
+
+    if(dst_slice_pitch<0) {
+        efree(region);
+        efree(src_origins);
+        efree(dst_origins);
+        zend_throw_exception(spl_ce_InvalidArgumentException, "dst_slice_pitch must be greater then or equal zero.", CL_INVALID_VALUE);
+        return;
+    } else if(dst_slice_pitch==0) {
+        dst_slice_pitch = region[1]*dst_row_pitch;
+    }
+
+    {
+        zend_long pos_max
+            = (src_origins[2]+region[2]-1)*src_slice_pitch
+            + (src_origins[1]+region[1]-1)*src_row_pitch
+            + (src_origins[0]+region[0]-1);
+        if(pos_max >= (zend_long)(src_buffer_obj->size)) {
+            efree(region);
+            efree(src_origins);
+            efree(dst_origins);
+            zend_throw_exception(spl_ce_InvalidArgumentException, "Source buffer is too small.", CL_INVALID_VALUE);
+            return;
+        }
+    }
+
+    {
+        zend_long pos_max
+            = (dst_origins[2]+region[2]-1)*dst_slice_pitch
+            + (dst_origins[1]+region[1]-1)*dst_row_pitch
+            + (dst_origins[0]+region[0]-1);
+        if(pos_max >= (zend_long)(dst_buffer_obj->size)) {
+            efree(region);
+            efree(src_origins);
+            efree(dst_origins);
+            zend_throw_exception(spl_ce_InvalidArgumentException, "destination buffer is too small.", CL_INVALID_VALUE);
+            return;
+        }
+    }
+
+    if(events_obj_p!=NULL && Z_TYPE_P(events_obj_p)==IS_OBJECT) {
+        event_p = &event_ret;
+    }
+
+    if(event_wait_list_obj_p!=NULL && Z_TYPE_P(event_wait_list_obj_p)==IS_OBJECT) {
+        event_wait_list_obj = Z_RINDOW_OPENCL_EVENT_LIST_OBJ_P(event_wait_list_obj_p);
+        num_events_in_wait_list = event_wait_list_obj->num;
+        event_wait_list = event_wait_list_obj->events;
+    }
+
+    errcode_ret = clEnqueueCopyBufferRect(
+        command_queue_obj->command_queue,
+        src_buffer_obj->buffer,
+        dst_buffer_obj->buffer,
+        src_origins,
+        dst_origins,
+        region,
+        (size_t)src_row_pitch,
+        (size_t)src_slice_pitch,
+        (size_t)dst_row_pitch,
+        (size_t)dst_slice_pitch,
+        num_events_in_wait_list,
+        event_wait_list,
+        event_p);
+
+    if(errcode_ret!=CL_SUCCESS) {
+        efree(region);
+        efree(src_origins);
+        efree(dst_origins);
+        zend_throw_exception_ex(spl_ce_RuntimeException, errcode_ret, "clEnqueueCopyBufferRect Error errcode=%d", errcode_ret);
+        return;
+    }
+
+    // append event to events
+    if(php_rindow_opencl_append_event(events_obj_p, event_p)) {
+        efree(region);
+        efree(src_origins);
+        efree(dst_origins);
+        return;
+    }
+
+    efree(region);
+    efree(src_origins);
+    efree(dst_origins);
+}
+/* }}} */
 
 ZEND_BEGIN_ARG_INFO_EX(ai_Buffer___construct, 0, 0, 2)
     ZEND_ARG_OBJ_INFO(0, context, Rindow\\OpenCL\\Context, 0)
@@ -615,12 +1345,45 @@ ZEND_BEGIN_ARG_INFO_EX(ai_Buffer_read, 0, 0, 2)
     ZEND_ARG_OBJ_INFO(0, event_wait_list, Rindow\\OpenCL\\EventList, 1)
 ZEND_END_ARG_INFO()
 
+
+ZEND_BEGIN_ARG_INFO_EX(ai_Buffer_readRect, 0, 0, 3)
+    ZEND_ARG_OBJ_INFO(0, queue, Rindow\\OpenCL\\CommandQueue, 0)
+    ZEND_ARG_OBJ_INFO(0, host_buffer, Interop\\Polite\\Math\\Matrix\\LinearBuffer, 0)
+    ZEND_ARG_INFO(0, region)
+    ZEND_ARG_INFO(0, host_buffer_offset)
+    ZEND_ARG_INFO(0, buffer_offsets)
+    ZEND_ARG_INFO(0, host_offsets)
+    ZEND_ARG_INFO(0, buffer_row_pitch)
+    ZEND_ARG_INFO(0, buffer_slice_pitch)
+    ZEND_ARG_INFO(0, host_row_pitch)
+    ZEND_ARG_INFO(0, host_slice_pitch)
+    ZEND_ARG_INFO(0, blocking_read)
+    ZEND_ARG_OBJ_INFO(0, events, Rindow\\OpenCL\\EventList, 1)
+    ZEND_ARG_OBJ_INFO(0, event_wait_list, Rindow\\OpenCL\\EventList, 1)
+ZEND_END_ARG_INFO()
+
 ZEND_BEGIN_ARG_INFO_EX(ai_Buffer_write, 0, 0, 2)
     ZEND_ARG_OBJ_INFO(0, queue, Rindow\\OpenCL\\CommandQueue, 0)
     ZEND_ARG_OBJ_INFO(0, host_buffer, Interop\\Polite\\Math\\Matrix\\LinearBuffer, 0)
     ZEND_ARG_INFO(0, size)
     ZEND_ARG_INFO(0, offset)
     ZEND_ARG_INFO(0, host_offset)
+    ZEND_ARG_INFO(0, blocking_write)
+    ZEND_ARG_OBJ_INFO(0, events, Rindow\\OpenCL\\EventList, 1)
+    ZEND_ARG_OBJ_INFO(0, event_wait_list, Rindow\\OpenCL\\EventList, 1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(ai_Buffer_writeRect, 0, 0, 3)
+    ZEND_ARG_OBJ_INFO(0, queue, Rindow\\OpenCL\\CommandQueue, 0)
+    ZEND_ARG_OBJ_INFO(0, host_buffer, Interop\\Polite\\Math\\Matrix\\LinearBuffer, 0)
+    ZEND_ARG_INFO(0, region)
+    ZEND_ARG_INFO(0, host_buffer_offset)
+    ZEND_ARG_INFO(0, buffer_offsets)
+    ZEND_ARG_INFO(0, host_offsets)
+    ZEND_ARG_INFO(0, buffer_row_pitch)
+    ZEND_ARG_INFO(0, buffer_slice_pitch)
+    ZEND_ARG_INFO(0, host_row_pitch)
+    ZEND_ARG_INFO(0, host_slice_pitch)
     ZEND_ARG_INFO(0, blocking_write)
     ZEND_ARG_OBJ_INFO(0, events, Rindow\\OpenCL\\EventList, 1)
     ZEND_ARG_OBJ_INFO(0, event_wait_list, Rindow\\OpenCL\\EventList, 1)
@@ -647,6 +1410,20 @@ ZEND_BEGIN_ARG_INFO_EX(ai_Buffer_copy, 0, 0, 2)
     ZEND_ARG_OBJ_INFO(0, event_wait_list, Rindow\\OpenCL\\EventList, 1)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(ai_Buffer_copyRect, 0, 0, 3)
+    ZEND_ARG_OBJ_INFO(0, queue, Rindow\\OpenCL\\CommandQueue, 0)
+    ZEND_ARG_OBJ_INFO(0, src_buffer, Rindow\\OpenCL\\Buffer, 0)
+    ZEND_ARG_INFO(0, region)
+    ZEND_ARG_INFO(0, src_origins)
+    ZEND_ARG_INFO(0, dst_origins)
+    ZEND_ARG_INFO(0, src_row_pitch)
+    ZEND_ARG_INFO(0, src_slice_pitch)
+    ZEND_ARG_INFO(0, dst_row_pitch)
+    ZEND_ARG_INFO(0, dst_slice_pitch)
+    ZEND_ARG_OBJ_INFO(0, events, Rindow\\OpenCL\\EventList, 1)
+    ZEND_ARG_OBJ_INFO(0, event_wait_list, Rindow\\OpenCL\\EventList, 1)
+ZEND_END_ARG_INFO()
+
 ZEND_BEGIN_ARG_INFO_EX(ai_Buffer_void, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
@@ -654,13 +1431,16 @@ ZEND_END_ARG_INFO()
 static zend_function_entry php_rindow_opencl_buffer_me[] = {
     /* clang-format off */
     PHP_ME(Buffer, __construct, ai_Buffer___construct, ZEND_ACC_PUBLIC)
-    PHP_ME(Buffer, dtype,      ai_Buffer_void,  ZEND_ACC_PUBLIC)
-    PHP_ME(Buffer, value_size, ai_Buffer_void,  ZEND_ACC_PUBLIC)
-    PHP_ME(Buffer, bytes,      ai_Buffer_void,  ZEND_ACC_PUBLIC)
-    PHP_ME(Buffer, read,       ai_Buffer_read,  ZEND_ACC_PUBLIC)
-    PHP_ME(Buffer, write,      ai_Buffer_write, ZEND_ACC_PUBLIC)
-    PHP_ME(Buffer, fill,       ai_Buffer_fill,  ZEND_ACC_PUBLIC)
-    PHP_ME(Buffer, copy,       ai_Buffer_copy,  ZEND_ACC_PUBLIC)
+    PHP_ME(Buffer, dtype,      ai_Buffer_void,      ZEND_ACC_PUBLIC)
+    PHP_ME(Buffer, value_size, ai_Buffer_void,      ZEND_ACC_PUBLIC)
+    PHP_ME(Buffer, bytes,      ai_Buffer_void,      ZEND_ACC_PUBLIC)
+    PHP_ME(Buffer, read,       ai_Buffer_read,      ZEND_ACC_PUBLIC)
+    PHP_ME(Buffer, readRect,   ai_Buffer_readRect,  ZEND_ACC_PUBLIC)
+    PHP_ME(Buffer, write,      ai_Buffer_write,     ZEND_ACC_PUBLIC)
+    PHP_ME(Buffer, writeRect,  ai_Buffer_writeRect, ZEND_ACC_PUBLIC)
+    PHP_ME(Buffer, fill,       ai_Buffer_fill,      ZEND_ACC_PUBLIC)
+    PHP_ME(Buffer, copy,       ai_Buffer_copy,      ZEND_ACC_PUBLIC)
+    PHP_ME(Buffer, copyRect,   ai_Buffer_copyRect,  ZEND_ACC_PUBLIC)
     PHP_FE_END
     /* clang-format on */
 };
