@@ -134,58 +134,83 @@ static PHP_METHOD(Kernel, setArg)
             return;
         }
     } else if(Z_TYPE_P(arg_obj_p)==IS_LONG || Z_TYPE_P(arg_obj_p)==IS_DOUBLE) {
+        zend_long arg_zend_long;
+        double arg_zend_double;
         if(dtype==0) {
             zend_throw_exception(spl_ce_InvalidArgumentException, "Must be specified data type for integer or float", CL_INVALID_VALUE);
             return;
         }
+        if(Z_TYPE_P(arg_obj_p)==IS_LONG) {
+            arg_zend_long = Z_LVAL_P(arg_obj_p);
+            switch(dtype) {
+                case php_interop_polite_math_matrix_dtype_float32:
+                case php_interop_polite_math_matrix_dtype_float64:
+                    arg_zend_double = (double)arg_zend_long;
+                    break;
+            }
+        } else {
+            arg_zend_double = Z_DVAL_P(arg_obj_p);
+            switch(dtype) {
+                case php_interop_polite_math_matrix_dtype_int8:
+                case php_interop_polite_math_matrix_dtype_int16:
+                case php_interop_polite_math_matrix_dtype_int32:
+                case php_interop_polite_math_matrix_dtype_int64:
+                case php_interop_polite_math_matrix_dtype_uint8:
+                case php_interop_polite_math_matrix_dtype_uint16:
+                case php_interop_polite_math_matrix_dtype_uint32:
+                case php_interop_polite_math_matrix_dtype_uint64:
+                    arg_zend_long = (zend_long)arg_zend_double;
+                    break;
+            }
+        }
         switch(dtype) {
             case php_interop_polite_math_matrix_dtype_int8:
-                arg_char = (cl_char)Z_LVAL_P(arg_obj_p);
+                arg_char = (cl_char)arg_zend_long;
                 arg_value = &arg_char;
                 arg_size = sizeof(cl_char);
                 break;
             case php_interop_polite_math_matrix_dtype_int16:
-                arg_short = (cl_short)Z_LVAL_P(arg_obj_p);
+                arg_short = (cl_short)arg_zend_long;
                 arg_value = &arg_short;
                 arg_size = sizeof(cl_short);
                 break;
             case php_interop_polite_math_matrix_dtype_int32:
-                arg_int = (cl_int)Z_LVAL_P(arg_obj_p);
+                arg_int = (cl_int)arg_zend_long;
                 arg_value = &arg_int;
                 arg_size = sizeof(cl_int);
                 break;
             case php_interop_polite_math_matrix_dtype_int64:
-                arg_long = (cl_long)Z_LVAL_P(arg_obj_p);
+                arg_long = (cl_long)arg_zend_long;
                 arg_value = &arg_long;
                 arg_size = sizeof(cl_long);
                 break;
             case php_interop_polite_math_matrix_dtype_uint8:
-                arg_uchar = (cl_uchar)Z_LVAL_P(arg_obj_p);
+                arg_uchar = (cl_uchar)arg_zend_long;
                 arg_value = &arg_uchar;
                 arg_size = sizeof(cl_uchar);
                 break;
             case php_interop_polite_math_matrix_dtype_uint16:
-                arg_ushort = (cl_ushort)Z_LVAL_P(arg_obj_p);
+                arg_ushort = (cl_ushort)arg_zend_long;
                 arg_value = &arg_ushort;
                 arg_size = sizeof(cl_ushort);
                 break;
             case php_interop_polite_math_matrix_dtype_uint32:
-                arg_uint = (cl_uint)Z_LVAL_P(arg_obj_p);
+                arg_uint = (cl_uint)arg_zend_long;
                 arg_value = &arg_uint;
                 arg_size = sizeof(cl_uint);
                 break;
             case php_interop_polite_math_matrix_dtype_uint64:
-                arg_ulong = (cl_ulong)Z_LVAL_P(arg_obj_p);
+                arg_ulong = (cl_ulong)arg_zend_long;
                 arg_value = &arg_ulong;
                 arg_size = sizeof(cl_ulong);
                 break;
             case php_interop_polite_math_matrix_dtype_float32:
-                arg_float = (cl_float)Z_DVAL_P(arg_obj_p);
+                arg_float = (cl_float)arg_zend_double;
                 arg_value = &arg_float;
                 arg_size = sizeof(cl_float);
                 break;
             case php_interop_polite_math_matrix_dtype_float64:
-                arg_double = (cl_double)Z_DVAL_P(arg_obj_p);
+                arg_double = (cl_double)arg_zend_double;
                 arg_value = &arg_double;
                 arg_size = sizeof(cl_double);
                 break;
