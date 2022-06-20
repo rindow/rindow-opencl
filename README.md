@@ -10,7 +10,7 @@ Learn more about the Rindow Neural Network Library [here](https://rindow.github.
 Requirements
 ============
 
-- PHP7.2 or PHP7.3 or PHP7.4 or PHP8.0
+- PHP7.2 or PHP7.3 or PHP7.4 or PHP8.0 or PHP8.1
 - interop-phpobjects/polite-math 1.0.3 or later
 - LinearBuffer implements for interop-phpobjects (rindow_openblas etc.)
 - OpenCL 1.2 drivers/libraries.
@@ -33,7 +33,7 @@ How to setup pre-build binaries
 You can download and use pre-built Windows binaries.
 Download the binary for your version of PHP.
 
-- https://github.com/rindow/rindow-openblas-binaries
+- https://github.com/rindow/rindow-openblas/releases
 - https://github.com/xianyi/OpenBLAS/releases
 - https://github.com/rindow/rindow-opencl/releases
 - https://github.com/rindow/rindow-clblast/releases
@@ -78,7 +78,7 @@ Developing PHP extensions from php8.0 requires VS16. You can use Visual Studio 2
 - You must know that PHP 7.2,7.3 and 7.4 needs environment for the MSVC version vc15 (that means Visual Studio 2017). php-sdk releases 2.1.9 supports vc15.
 - For PHP 7.x, Download the php-sdk from https://github.com/microsoft/php-sdk-binary-tools/releases/tag/php-sdk-2.1.9
 - If you want to build extensions for PHP 8.0, You have to use php-sdk release 2.2.0. It supports vs16.
-- For PHP 8.0, Download the php-sdk from https://github.com/microsoft/php-sdk-binary-tools/releases/tag/php-sdk-2.2.0
+- For PHP 8.0,8.1 Download the php-sdk from https://github.com/microsoft/php-sdk-binary-tools/releases/tag/php-sdk-2.2.0
 - Extract to c:\php-sdk
 - Download target dev-pack from https://windows.php.net/downloads/releases/
 - Extract to /path/to/php-devel-pack-x.x.x-Win32-Vxxx-x64/
@@ -88,7 +88,7 @@ Developing PHP extensions from php8.0 requires VS16. You can use Visual Studio 2
 ```shell
 C:\visual\studio\path>vcvars64 -vcvars_ver=14.16  <=== for PHP7.x
 or
-C:\visual\studio\path>vcvars64                    <=== for PHP8.0
+C:\visual\studio\path>vcvars64                    <=== for PHP8.0, PHP8.1
 
 C:\visual\studio\path>cd /path/to/OpenCL
 C:\path\OpenCL>mkdir lib
@@ -129,7 +129,7 @@ Open Visual Studio Command Prompt for VS for the target PHP version(see stepbyst
 Note that when you build for PHP7.x, you must explicitly specify the version of vc15 for which php.exe was built.
 The -vcvars_ver=14.16 means vc15.
 
-If you want to build for PHP8.0, you just use Visual Studio Command Prompt.
+If you want to build for PHP8.0, 8.1, you just use Visual Studio Command Prompt.
 
 ```shell
 C:\visual\studio\path>vcvars64 -vcvars_ver=14.16

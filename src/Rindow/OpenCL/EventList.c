@@ -254,6 +254,9 @@ ZEND_BEGIN_ARG_INFO_EX(ai_EventList_setStatus, 0, 0, 1)
     ZEND_ARG_INFO(0, index)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(ai_EventList_count, 0, 0, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
 ZEND_BEGIN_ARG_INFO_EX(ai_EventList_void, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
@@ -261,7 +264,7 @@ ZEND_END_ARG_INFO()
 static zend_function_entry php_rindow_opencl_event_list_me[] = {
     /* clang-format off */
     PHP_ME(EventList, __construct, ai_EventList___construct, ZEND_ACC_PUBLIC)
-    PHP_ME(EventList, count,       ai_EventList_void,        ZEND_ACC_PUBLIC)
+    PHP_ME(EventList, count,       ai_EventList_count,       ZEND_ACC_PUBLIC)
     PHP_ME(EventList, wait,        ai_EventList_void,        ZEND_ACC_PUBLIC)
     PHP_ME(EventList, move,        ai_EventList_move,        ZEND_ACC_PUBLIC)
     PHP_ME(EventList, copy,        ai_EventList_copy,        ZEND_ACC_PUBLIC)
@@ -286,7 +289,6 @@ void php_rindow_opencl_event_list_init_ce(INIT_FUNC_ARGS)
     rindow_opencl_event_list_object_handlers.free_obj  = php_rindow_opencl_event_list_free_object;
     rindow_opencl_event_list_object_handlers.clone_obj = NULL;
 
-    //zend_class_implements(php_rindow_opencl_event_list_ce, 2, spl_ce_ArrayAccess, spl_ce_Countable);
-    zend_class_implements(php_rindow_opencl_event_list_ce, 1, spl_ce_Countable);
+    zend_class_implements(php_rindow_opencl_event_list_ce, 1, zend_ce_countable);
 }
 /* }}} */
