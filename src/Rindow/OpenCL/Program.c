@@ -1,18 +1,16 @@
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 #include <php.h>
 #include <Zend/zend_interfaces.h>
 #include <Zend/zend_exceptions.h>
 #include <ext/spl/spl_iterators.h>
 #include <ext/spl/spl_exceptions.h>
 #include <stdint.h>
-#define CL_TARGET_OPENCL_VERSION 120
 #include <CL/opencl.h>
 #include "Rindow/OpenCL/Program.h"
 #include "Rindow/OpenCL/Context.h"
 #include "Rindow/OpenCL/DeviceList.h"
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include "php_rindow_opencl.h"
 
@@ -21,7 +19,7 @@
 #define PHP_RINDOW_OPENCL_PROGRAM_CONST_TYPE_BUILTIN_KERNEL   2
 #define PHP_RINDOW_OPENCL_PROGRAM_CONST_TYPE_COMPILED_PROGRAM 3
 
-static unsigned char ** array_to_strings(
+static char ** array_to_strings(
     zval *array_val, cl_uint *num_strings_p, size_t **lengths_p, int *errcode_ret)
 {
     cl_uint num_strings;
@@ -203,7 +201,7 @@ static PHP_METHOD(Program, __construct)
                 program = clCreateProgramWithSource(
                     context_obj->context,
                     num_strings,
-                    strings,
+                    (const char**)strings,
                     lengths,
                     &errcode_ret);
                 efree(strings);
@@ -218,7 +216,7 @@ static PHP_METHOD(Program, __construct)
                     num_devices,
                     devices,
                     lengths,
-                    strings,
+                    (const unsigned char**)strings,
                     NULL,                 // cl_int * binary_status,
                     &errcode_ret);
                 efree(strings);
@@ -230,6 +228,7 @@ static PHP_METHOD(Program, __construct)
             }
             break;
         }
+#ifdef CL_VERSION_1_2
         case PHP_RINDOW_OPENCL_PROGRAM_CONST_TYPE_BUILTIN_KERNEL: { // built-in kernel mode
             if(Z_TYPE_P(source_obj_p)!=IS_STRING) {
                 zend_throw_exception(spl_ce_InvalidArgumentException, "built-in kernel mode must be include kernel name string", CL_INVALID_VALUE);
@@ -284,6 +283,7 @@ static PHP_METHOD(Program, __construct)
             }
             break;
         }
+#endif
         default: {
             zend_throw_exception(spl_ce_InvalidArgumentException, "invalid mode.", CL_INVALID_VALUE);
             return;
@@ -336,6 +336,7 @@ static PHP_METHOD(Program, build)
 }
 /* }}} */
 
+#ifdef CL_VERSION_1_2
 /* Method Rindow\OpenCL\Program::compile(
     array $headers=null,  // ArrayHash<Program> Key:file path Value:program
     string $options=null, // string
@@ -382,7 +383,7 @@ static PHP_METHOD(Program, compile)
         options,
         num_input_headers,
         input_headers,
-        header_include_names,
+        (const char **)header_include_names,
         NULL,        // CL_CALLBACK *  pfn_notify
         NULL         // void * user_data
     );
@@ -398,6 +399,7 @@ static PHP_METHOD(Program, compile)
     }
 }
 /* }}} */
+#endif
 
 /* Method Rindow\OpenCL\Program::getInfo(
     int $param_name
@@ -434,6 +436,7 @@ static PHP_METHOD(Program, getInfo)
             RETURN_LONG(result);
             break;
         }
+#ifdef CL_VERSION_1_2
         case CL_PROGRAM_NUM_KERNELS: {
             size_t size_t_result;
             zend_long result;
@@ -444,11 +447,14 @@ static PHP_METHOD(Program, getInfo)
             RETURN_LONG(result);
             break;
         }
+#endif
 #ifdef CL_VERSION_2_1
         case CL_PROGRAM_IL:
 #endif
-        case CL_PROGRAM_SOURCE:
-        case CL_PROGRAM_KERNEL_NAMES: {
+#ifdef CL_VERSION_1_2
+        case CL_PROGRAM_KERNEL_NAMES:
+#endif
+        case CL_PROGRAM_SOURCE: {
             char *param_value = emalloc(param_value_size_ret);
             errcode_ret = clGetProgramInfo(intern->program,
                               (cl_program_info)param_name,
@@ -582,6 +588,7 @@ static PHP_METHOD(Program, getBuildInfo)
             RETURN_LONG(result);
             break;
         }
+#ifdef CL_VERSION_1_2
         case CL_PROGRAM_BINARY_TYPE: {
             cl_uint uint_result;
             zend_long result;
@@ -593,6 +600,7 @@ static PHP_METHOD(Program, getBuildInfo)
             RETURN_LONG(result);
             break;
         }
+#endif
         case CL_PROGRAM_BUILD_OPTIONS:
         case CL_PROGRAM_BUILD_LOG: {
             zend_string *param_value_val = zend_string_safe_alloc(param_value_size_ret, 1, 0, 0);
@@ -637,11 +645,13 @@ ZEND_BEGIN_ARG_INFO_EX(ai_Program_build, 0, 0, 0)
     ZEND_ARG_OBJ_INFO(0, devices, Rindow\\OpenCL\\DeviceList, 1)
 ZEND_END_ARG_INFO()
 
+#ifdef CL_VERSION_1_2
 ZEND_BEGIN_ARG_INFO_EX(ai_Program_compile, 0, 0, 0)
     ZEND_ARG_ARRAY_INFO(0, headers, 1)
     ZEND_ARG_INFO(0, options)
     ZEND_ARG_OBJ_INFO(0, deivces, Rindow\\OpenCL\\DeviceList, 1)
 ZEND_END_ARG_INFO()
+#endif
 
 ZEND_BEGIN_ARG_INFO_EX(ai_Program_getInfo, 0, 0, 1)
     ZEND_ARG_INFO(0, param_name)
@@ -659,7 +669,9 @@ static zend_function_entry php_rindow_opencl_program_me[] = {
     /* clang-format off */
     PHP_ME(Program, __construct, ai_Program___construct, ZEND_ACC_PUBLIC)
     PHP_ME(Program, build, ai_Program_build, ZEND_ACC_PUBLIC)
+#ifdef CL_VERSION_1_2
     PHP_ME(Program, compile, ai_Program_compile, ZEND_ACC_PUBLIC)
+#endif
     PHP_ME(Program, getInfo, ai_Program_getInfo, ZEND_ACC_PUBLIC)
     PHP_ME(Program, getBuildInfo, ai_Program_getBuildInfo, ZEND_ACC_PUBLIC)
     PHP_FE_END

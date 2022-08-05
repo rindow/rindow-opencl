@@ -5,12 +5,11 @@
 
 # define phpext_rindow_opencl_ptr &rindow_opencl_module_entry
 
-# define PHP_RINDOW_OPENCL_VERSION "0.1.4"
+# define PHP_RINDOW_OPENCL_VERSION "0.1.5"
 
 # if defined(ZTS) && defined(COMPILE_DL_RINDOW_OPENCL)
 ZEND_TSRMLS_CACHE_EXTERN()
 # endif
-#define CL_TARGET_OPENCL_VERSION 120
 #include <CL/opencl.h>
 
 enum php_rindow_opencl_array_to_integers_constraint {

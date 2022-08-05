@@ -1,16 +1,14 @@
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 #include <php.h>
 #include <Zend/zend_interfaces.h>
 #include <Zend/zend_exceptions.h>
 #include <ext/spl/spl_iterators.h>
 #include <ext/spl/spl_exceptions.h>
 #include <stdint.h>
-#define CL_TARGET_OPENCL_VERSION 120
 #include <CL/opencl.h>
 #include "Rindow/OpenCL/PlatformList.h"
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include "php_rindow_opencl.h"
 
@@ -122,7 +120,7 @@ static PHP_METHOD(PlatformList, getOne)
 
     intern = Z_RINDOW_OPENCL_PLATFORM_LIST_OBJ_P(getThis());
     if(index<0 || index >=intern->num) {
-        zend_throw_exception_ex(spl_ce_OutOfRangeException, 0, "Invalid index of platforms: %d", index);
+        zend_throw_exception_ex(spl_ce_OutOfRangeException, 0, "Invalid index of platforms: %d", (int)index);
         return;
     }
     // direct set to return_value
@@ -156,7 +154,7 @@ static PHP_METHOD(PlatformList, getInfo)
     ZEND_PARSE_PARAMETERS_END();
 
     if(index<0 || index >= intern->num) {
-        zend_throw_exception_ex(spl_ce_OutOfRangeException, 0, "Invalid index of platforms: %d", index);
+        zend_throw_exception_ex(spl_ce_OutOfRangeException, 0, "Invalid index of platforms: %d", (int)index);
         return;
     }
     errcode_ret = clGetPlatformInfo(intern->platforms[index],

@@ -10,7 +10,44 @@ if (!extension_loaded('rindow_opencl')) {
 <?php
 $loader = include __DIR__.'/../vendor/autoload.php';
 use Interop\Polite\Math\Matrix\OpenCL;
+function safestring($string) {
+    $out = '';
+    $string = str_split($string);
+    $len = count($string);
+    for($i=0;$i<$len;$i++) {
+        $c = ord($string[$i]);
+        if($c>=32&&$c<127) {
+            $out .= chr($c);
+        } elseif($c==10||$c==13) {
+            $out .= "\n";
+        } else {
+            $out .= '($'.dechex($c).')';
+        }
+    }
+    return $out;
+}
+function compile_error($program,$e) {
+    echo $e->getMessage();
+    switch($e->getCode()) {
+        case OpenCL::CL_BUILD_PROGRAM_FAILURE: {
+            echo "CL_PROGRAM_BUILD_STATUS=".$program->getBuildInfo(OpenCL::CL_PROGRAM_BUILD_STATUS)."\n";
+            echo "CL_PROGRAM_BUILD_OPTIONS=".safestring($program->getBuildInfo(OpenCL::CL_PROGRAM_BUILD_OPTIONS))."\n";
+            echo "CL_PROGRAM_BUILD_LOG=".safestring($program->getBuildInfo(OpenCL::CL_PROGRAM_BUILD_LOG))."\n";
+            echo "CL_PROGRAM_BINARY_TYPE=".safestring($program->getBuildInfo(OpenCL::CL_PROGRAM_BINARY_TYPE))."\n";
+        }
+        case OpenCL::CL_COMPILE_PROGRAM_FAILURE: {
+            echo "CL_PROGRAM_BUILD_LOG=".safestring($program->getBuildInfo(OpenCL::CL_PROGRAM_BUILD_LOG))."\n";
+        }
+    }
+    throw $e;
+}
+
 $context = new Rindow\OpenCL\Context(OpenCL::CL_DEVICE_TYPE_DEFAULT);
+$devices = $context->getInfo(OpenCL::CL_CONTEXT_DEVICES);
+$dev_version = $devices->getInfo(0,OpenCL::CL_DEVICE_VERSION);
+//$dev_version = 'OpenCL 1.1 Mesa';
+$isOpenCL110 = strstr($dev_version,'OpenCL 1.1') !== false;
+
 $sources = [
     "__kernel void saxpy(const global float * x,\n".
     "                    __global float * y,\n".
@@ -22,14 +59,26 @@ $sources = [
 ];
 $program = new Rindow\OpenCL\Program($context,$sources);
 echo "SUCCESS Construction\n";
-$program->build();
+try {
+    $program->build();
+} catch(\RuntimeException $e) {
+    compile_error($program,$e);
+}
+
 echo "SUCCESS build\n";
 $program = new Rindow\OpenCL\Program($context,$sources,
-    $mode=null,$devices=null,$options=null);
+    $mode=0,$devices=null,$options=null);
 echo "SUCCESS constructor with null arguments\n";
-$program->build($options=null,$devices=null);
+try {
+    $program->build($options=null,$devices=null);
+} catch(\RuntimeException $e) {
+    compile_error($program,$e);
+}
+
 echo "SUCCESS build with null arguments\n";
-assert(null!==$program->getInfo(OpenCL::CL_PROGRAM_KERNEL_NAMES));
+if(!$isOpenCL110) {
+    assert(null!==$program->getInfo(OpenCL::CL_PROGRAM_KERNEL_NAMES));
+}
 echo "SUCCESS getInfo\n";
 /*
 echo "CL_PROGRAM_REFERENCE_COUNT=".$program->getInfo(OpenCL::CL_PROGRAM_REFERENCE_COUNT)."\n";

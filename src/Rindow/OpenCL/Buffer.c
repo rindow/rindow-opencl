@@ -1,20 +1,18 @@
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 #include <php.h>
 #include <Zend/zend_interfaces.h>
 #include <Zend/zend_exceptions.h>
 #include <ext/spl/spl_iterators.h>
 #include <ext/spl/spl_exceptions.h>
 #include <stdint.h>
-#define CL_TARGET_OPENCL_VERSION 120
 #include <CL/opencl.h>
 #include "Rindow/OpenCL/Buffer.h"
 #include "Rindow/OpenCL/Context.h"
 #include "Rindow/OpenCL/EventList.h"
 #include "Rindow/OpenCL/CommandQueue.h"
 #include <Interop/Polite/Math/Matrix.h>
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include "php_rindow_opencl.h"
 
@@ -908,6 +906,7 @@ static PHP_METHOD(Buffer, writeRect)
 }
 /* }}} */
 
+#ifdef CL_VERSION_1_2
 /* Method Rindow\OpenCL\Buffer::fill(
     CommandQueue $command_queue,
     Interop\Polite\Math\LinearBuffer $patternBuffer  // host buffer assigned
@@ -985,6 +984,19 @@ static PHP_METHOD(Buffer, fill)
         event_wait_list = event_wait_list_obj->events;
     }
 
+    //if(1) {
+    //    zend_throw_exception_ex(spl_ce_RuntimeException, errcode_ret, 
+    //        "debug=%d,offset=%d,size=%d,pattern_size=%d,pattern_value_size=%d",
+    //        3,(int)offset,(int)size,(int)pattern_size,(int)(pattern_buffer_obj->value_size));
+    //    return;
+    //}
+    //php_printf("debug=%d,offset=%d,size=%d,pattern_size=%d,pattern_value_size=%d,sizeof(cl_float)=%d\n",
+    //        3,(int)offset,(int)size,(int)pattern_size,(int)(pattern_buffer_obj->value_size),(int)sizeof(cl_float));
+    //if(num_events_in_wait_list!=0 || event_wait_list!=NULL) {
+    //    zend_throw_exception_ex(spl_ce_RuntimeException, errcode_ret, 
+    //    "event_wait_list is not null");
+    //    return;
+    //}
     errcode_ret = clEnqueueFillBuffer(
         command_queue_obj->command_queue,
         intern->buffer,
@@ -1009,6 +1021,7 @@ static PHP_METHOD(Buffer, fill)
     }
 }
 /* }}} */
+#endif
 
 /* Method Rindow\OpenCL\Buffer::copy(
     CommandQueue $command_queue,
@@ -1389,6 +1402,7 @@ ZEND_BEGIN_ARG_INFO_EX(ai_Buffer_writeRect, 0, 0, 3)
     ZEND_ARG_OBJ_INFO(0, event_wait_list, Rindow\\OpenCL\\EventList, 1)
 ZEND_END_ARG_INFO()
 
+#ifdef CL_VERSION_1_2
 ZEND_BEGIN_ARG_INFO_EX(ai_Buffer_fill, 0, 0, 2)
     ZEND_ARG_OBJ_INFO(0, queue, Rindow\\OpenCL\\CommandQueue, 0)
     ZEND_ARG_OBJ_INFO(0, pattern_buffer, Interop\\Polite\\Math\\Matrix\\LinearBuffer, 0)
@@ -1399,6 +1413,7 @@ ZEND_BEGIN_ARG_INFO_EX(ai_Buffer_fill, 0, 0, 2)
     ZEND_ARG_OBJ_INFO(0, events, Rindow\\OpenCL\\EventList, 1)
     ZEND_ARG_OBJ_INFO(0, event_wait_list, Rindow\\OpenCL\\EventList, 1)
 ZEND_END_ARG_INFO()
+#endif
 
 ZEND_BEGIN_ARG_INFO_EX(ai_Buffer_copy, 0, 0, 2)
     ZEND_ARG_OBJ_INFO(0, queue, Rindow\\OpenCL\\CommandQueue, 0)
@@ -1438,7 +1453,9 @@ static zend_function_entry php_rindow_opencl_buffer_me[] = {
     PHP_ME(Buffer, readRect,   ai_Buffer_readRect,  ZEND_ACC_PUBLIC)
     PHP_ME(Buffer, write,      ai_Buffer_write,     ZEND_ACC_PUBLIC)
     PHP_ME(Buffer, writeRect,  ai_Buffer_writeRect, ZEND_ACC_PUBLIC)
+#ifdef CL_VERSION_1_2
     PHP_ME(Buffer, fill,       ai_Buffer_fill,      ZEND_ACC_PUBLIC)
+#endif
     PHP_ME(Buffer, copy,       ai_Buffer_copy,      ZEND_ACC_PUBLIC)
     PHP_ME(Buffer, copyRect,   ai_Buffer_copyRect,  ZEND_ACC_PUBLIC)
     PHP_FE_END

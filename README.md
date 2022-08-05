@@ -1,7 +1,7 @@
 Rindow OpenCL PHP extension
 ===========================
 You can use OpenCL on PHP.
-The version of OpenCL is limited to version 1.2, and we are considering porting to a wide range of environments.
+The version of OpenCL is limited to version 1.2(1.1 with restrictions), and we are considering porting to a wide range of environments.
 
 Since our goal is to use it with the Rindow Neural Network Library, we currently only have the minimum required functionality. It will be expanded in the future.
 
@@ -13,8 +13,8 @@ Requirements
 - PHP7.2 or PHP7.3 or PHP7.4 or PHP8.0 or PHP8.1
 - interop-phpobjects/polite-math 1.0.3 or later
 - LinearBuffer implements for interop-phpobjects (rindow_openblas etc.)
-- OpenCL 1.2 drivers/libraries.
-- Windows 10
+- OpenCL 1.2 ICL loader and OpenCL 1.1/1.2 drivers
+- Windows / Linux
 
 AMD GPU/APU drivers for windows are including OpenCL drivers.
 Probably you can use Intel OpenCL dirivers.
@@ -47,6 +47,8 @@ Please download the following two binaries and extract.
 - DLL of OpenBLAS library.
 - DLL of CLBlast library.
 
+### Windows
+
 Copy the shared library to the PHP extension directory and set it in php.ini.
 And OpenBLAS DLL's path to Windows PATH environment variable.
 
@@ -61,6 +63,108 @@ C:\tmp>PATH %PATH%;/path/to/OpenBLAS/bin;/path/to/CLBlast-Library/lib
 C:\tmp>cd /some/app/directory
 C:\app\dir>composer require rindow/rindow-math-matrix
 ```
+
+### Ubuntu
+
+For example, in the case of Ubuntu standard AMD driver, install as follows
+```shell
+$ sudo apt install clinfo
+$ sudo apt install mesa-opencl-icd
+$ sudo mkdir -p /usr/local/usr/lib
+$ sudo ln -s /usr/lib/clc /usr/local/usr/lib/clc
+```
+Ubuntu standard OpenCL drivers include:
+- mesa-opencl-icd
+- beignet-opencl-icd
+- intel-opencl-icd
+- nvidia-opencl-icd-xxx
+- pocl-opencl-icd
+
+Use the apt command to install the deb file.
+
+```shell
+$ sudo apt install ./rindow-opencl-phpX.X_X.X.X-X+ubuntuXX.XX_amd64.deb
+```
+
+
+How to build from source code on Linux
+========================================
+You can also build and use from source code.
+
+### Install OpenCL ICD and Tool
+```shell
+$ sudo apt install clinfo
+```
+
+### Install Hardware-dependent OpenCL library.
+For example, in the case of Ubuntu standard AMD driver, install as follows
+
+```shell
+$ sudo apt install mesa-opencl-icd
+$ sudo mkdir -p /usr/local/usr/lib
+$ sudo ln -s /usr/lib/clc /usr/local/usr/lib/clc
+```
+
+In addition, there are the following drivers.
+
+- mesa-opencl-icd
+- beignet-opencl-icd
+- intel-opencl-icd
+- nvidia-opencl-icd-xxx
+- pocl-opencl-icd
+
+### Check OpenCL status
+How to check the installation status
+
+```shell
+$ clinfo
+Number of platforms                               1
+  Platform Name                                   Clover
+  Platform Vendor                                 Mesa
+  Platform Version                                OpenCL 1.1 Mesa 21.2.6
+  Platform Profile                                FULL_PROFILE
+  Platform Extensions                             cl_khr_icd
+  Platform Extensions function suffix             MESA
+....
+...
+..
+.
+```
+
+### Install build tools and libray
+Install gcc development environment and opencl library. Then install the php development environment according to the target php version.
+
+```shell
+$ sudo apt install build-essential autoconf automake libtool bison re2c
+$ sudo apt install pkg-config
+$ sudo apt install php8.1-dev
+$ sudo apt install ocl-icd-opencl-dev
+$ sudo apt install ./rindow-openblas-php8.1_X.X.X-X+ubuntuXX.XX_amd64.deb
+```
+
+### Build
+Run the target php version of phpize and build.
+
+```shell
+$ git clone https://github.com/rindow/rindow-opencl
+$ cd rindow-opencl
+$ composer update
+$ phpize8.1
+$ mv build/Makefile.global build/Makefile.global.orig
+$ sed -f Makefile.global.patch < build/Makefile.global.orig > build/Makefile.global
+$ ./configure --enable-rindow_opencl --with-php-config=php-config8.1
+$ make clean
+$ make
+$ make test
+```
+
+### Install from built directory
+
+```shell
+$ sudo make install
+```
+Add the "extension=rindow_opencl" entry to php.ini
+
 
 How to build from source code on Windows
 ========================================

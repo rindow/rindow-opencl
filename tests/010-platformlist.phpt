@@ -23,7 +23,7 @@ echo "SUCCESS construct by default\n";
 #
 $num = $platforms->count();
 $one = $platforms->getOne(0);
-assert($platforms->count()==1);
+assert($one->count()==1);
 #echo "CL_PLATFORM_NAME=".$one->getInfo(0,OpenCL::CL_PLATFORM_NAME)."\n";
 echo "SUCCESS getOne\n";
 #

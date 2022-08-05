@@ -10,6 +10,11 @@ if (!extension_loaded('rindow_opencl')) {
 <?php
 $loader = include __DIR__.'/../vendor/autoload.php';
 use Interop\Polite\Math\Matrix\OpenCL;
+$platforms = new Rindow\OpenCL\PlatformList();
+$devices = new Rindow\OpenCL\DeviceList($platforms);
+$total_dev = $devices->count();
+assert($total_dev>=0);
+
 #
 #  construct by default
 #
@@ -18,27 +23,37 @@ echo "SUCCESS construct by default\n";
 #
 #  construct context from type
 #
-$context = new Rindow\OpenCL\Context(OpenCL::CL_DEVICE_TYPE_GPU);
-$type = $context->getInfo(OpenCL::CL_CONTEXT_DEVICES)->getInfo(0,OpenCL::CL_DEVICE_TYPE);
-assert(true==($type&OpenCL::CL_DEVICE_TYPE_GPU));
-$context = new Rindow\OpenCL\Context(OpenCL::CL_DEVICE_TYPE_CPU);
-$type = $context->getInfo(OpenCL::CL_CONTEXT_DEVICES)->getInfo(0,OpenCL::CL_DEVICE_TYPE);
-assert(true==($type&OpenCL::CL_DEVICE_TYPE_CPU));
+$count = 0;
+foreach([OpenCL::CL_DEVICE_TYPE_GPU,OpenCL::CL_DEVICE_TYPE_CPU] as $type) {
+    try {
+        $context = new Rindow\OpenCL\Context($type);
+        $con_type = $context->getInfo(OpenCL::CL_CONTEXT_DEVICES)->getInfo(0,OpenCL::CL_DEVICE_TYPE);
+        assert(true==($con_type&$type));
+        $count++;
+    } catch(\RuntimeException $e) {
+        ;
+    }
+}
+assert($total_dev==$count);
 echo "SUCCESS construct from device type\n";
 #
 #  construct context from device_id
 #
 $platform = new Rindow\OpenCL\PlatformList();
-$devices = new Rindow\OpenCL\DeviceList($platform,null,OpenCL::CL_DEVICE_TYPE_GPU);
-$context = new Rindow\OpenCL\Context($devices);
-#echo $context->getInfo(OpenCL::CL_CONTEXT_DEVICES)->getInfo(0,OpenCL::CL_DEVICE_NAME)."\n";
-$type = $context->getInfo(OpenCL::CL_CONTEXT_DEVICES)->getInfo(0,OpenCL::CL_DEVICE_TYPE);
-assert(true==($type&OpenCL::CL_DEVICE_TYPE_GPU));
-$devices = new Rindow\OpenCL\DeviceList($platform,null,OpenCL::CL_DEVICE_TYPE_CPU);
-$context = new Rindow\OpenCL\Context($devices);
-#echo $context->getInfo(OpenCL::CL_CONTEXT_DEVICES)->getInfo(0,OpenCL::CL_DEVICE_NAME)."\n";
-$type = $context->getInfo(OpenCL::CL_CONTEXT_DEVICES)->getInfo(0,OpenCL::CL_DEVICE_TYPE);
-assert(true==($type&OpenCL::CL_DEVICE_TYPE_CPU));
+$count = 0;
+foreach([OpenCL::CL_DEVICE_TYPE_GPU,OpenCL::CL_DEVICE_TYPE_CPU] as $type) {
+    try {
+        $devices = new Rindow\OpenCL\DeviceList($platform,0,$type);
+        $context = new Rindow\OpenCL\Context($devices);
+        #echo $context->getInfo(OpenCL::CL_CONTEXT_DEVICES)->getInfo(0,OpenCL::CL_DEVICE_NAME)."\n";
+        $con_type = $context->getInfo(OpenCL::CL_CONTEXT_DEVICES)->getInfo(0,OpenCL::CL_DEVICE_TYPE);
+        assert(true==($con_type&$type));
+        $count++;
+    } catch(\RuntimeException $e) {
+        ;
+    }
+}
+assert($total_dev==$count);
 echo "SUCCESS construct from device_id\n";
 #
 #  get information

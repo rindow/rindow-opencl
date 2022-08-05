@@ -17,19 +17,25 @@ $platforms = new Rindow\OpenCL\PlatformList();
 #
 $devices = new Rindow\OpenCL\DeviceList($platforms);
 #echo "count=".$devices->count()."\n";
+$total_dev = $devices->count();
 assert($devices->count()>=0);
 echo "SUCCESS construct\n";
 #
 # construct with device type
 #
-$devices = new Rindow\OpenCL\DeviceList($platforms,0,OpenCL::CL_DEVICE_TYPE_CPU);
-#echo "count=".$devices->count()."\n";
-assert($devices->count()>=0);
-assert(true==($devices->getInfo(0,OpenCL::CL_DEVICE_TYPE)&OpenCL::CL_DEVICE_TYPE_CPU));
-$devices = new Rindow\OpenCL\DeviceList($platforms,0,OpenCL::CL_DEVICE_TYPE_GPU);
-#echo "count=".$devices->count()."\n";
-assert($devices->count()>=0);
-assert(true==($devices->getInfo(0,OpenCL::CL_DEVICE_TYPE)&OpenCL::CL_DEVICE_TYPE_GPU));
+$count = 0;
+foreach([OpenCL::CL_DEVICE_TYPE_CPU, OpenCL::CL_DEVICE_TYPE_GPU] as $type) {
+    try {
+        $devices = new Rindow\OpenCL\DeviceList($platforms,0,$type);
+        #echo "count=".$devices->count()."\n";
+        assert($devices->count()>=0);
+        assert(true==($devices->getInfo(0,OpenCL::CL_DEVICE_TYPE)&$type));
+        $count += $devices->count();
+    } catch(\RuntimeException $e) {
+        ;
+    }
+}
+assert($total_dev==$count);
 echo "SUCCESS construct with device type\n";
 #
 # Construct with null

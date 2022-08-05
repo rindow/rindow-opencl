@@ -1,0 +1,8 @@
+Package: rindow-opencl-php%PHP_VERSION%
+Maintainer: Rindow Developers <rindow@users.noreply.github.com>
+Architecture: amd64
+Depends: libc6 (>= 2.14), ocl-icd-libopencl1 | libopencl1, ocl-icd-libopencl1 (>= 1.0) | libopencl-1.1-1
+Version: %PHP_RINDOW_OPENCL_VERSION%-1+%OS_VERSION%
+Homepage: https://rindow.github.io/
+Description: Rindow OpenCL PHP extension
+ The Rindow OpenCL PHP extension makes OpenCL available via OpenCL ICD Loader.

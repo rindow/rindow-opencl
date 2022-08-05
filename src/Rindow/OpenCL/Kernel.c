@@ -1,10 +1,12 @@
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 #include <php.h>
 #include <Zend/zend_interfaces.h>
 #include <Zend/zend_exceptions.h>
 #include <ext/spl/spl_iterators.h>
 #include <ext/spl/spl_exceptions.h>
 #include <stdint.h>
-#define CL_TARGET_OPENCL_VERSION 120
 #include <CL/opencl.h>
 #include <Interop/Polite/Math/Matrix.h>
 #include "Rindow/OpenCL/Kernel.h"
@@ -13,10 +15,6 @@
 #include "Rindow/OpenCL/CommandQueue.h"
 #include "Rindow/OpenCL/EventList.h"
 #include "Rindow/OpenCL/DeviceList.h"
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include "php_rindow_opencl.h"
 
@@ -409,7 +407,9 @@ static PHP_METHOD(Kernel, getInfo)
             RETURN_LONG(result);
             break;
         }
+#ifdef CL_VERSION_1_2
         case CL_KERNEL_ATTRIBUTES:
+#endif
         case CL_KERNEL_FUNCTION_NAME: {
             char *param_value = emalloc(param_value_size_ret);
             errcode_ret = clGetKernelInfo(intern->kernel,
@@ -540,8 +540,10 @@ static PHP_METHOD(Kernel, getWorkGroupInfo)
             RETURN_LONG(result);
             break;
         }
-        case CL_KERNEL_COMPILE_WORK_GROUP_SIZE:
-        case CL_KERNEL_GLOBAL_WORK_SIZE: {
+#ifdef CL_VERSION_1_2
+        case CL_KERNEL_GLOBAL_WORK_SIZE: 
+#endif
+        case CL_KERNEL_COMPILE_WORK_GROUP_SIZE: {
             size_t* item_sizes = emalloc(param_value_size_ret);
             errcode_ret = clGetKernelWorkGroupInfo(intern->kernel,
                         device_id,

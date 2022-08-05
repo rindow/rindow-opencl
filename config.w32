@@ -24,11 +24,11 @@ if (PHP_RINDOW_OPENCL != 'no') {
   } else {
       ERROR("NOT FOUND: LinearBuffer interface header files. Please execute \"composer update\" on development directory.");
   }
-
 	// Condense whitespace in CFLAGS
   PHP_RINDOW_OPENCL_CFLAGS = PHP_RINDOW_OPENCL_CFLAGS.replace(/\s+/g, ' ');
 
   AC_DEFINE('HAVE_RINDOW_OPENCL', 1, 'rindow_opencl support enabled');
+  AC_DEFINE('CL_TARGET_OPENCL_VERSION', 120, 'Target OpenCL version 1.2');
 
   EXTENSION('rindow_opencl', 'rindow_opencl.c', null, PHP_RINDOW_OPENCL_CFLAGS);
   ADD_SOURCES(configure_module_dirname + "/src/Rindow/OpenCL", " PlatformList.c DeviceList.c EventList.c CommandQueue.c Context.c Buffer.c Program.c Kernel.c", "rindow_opencl");

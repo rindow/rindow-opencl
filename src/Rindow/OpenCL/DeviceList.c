@@ -1,17 +1,15 @@
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 #include <php.h>
 #include <Zend/zend_interfaces.h>
 #include <Zend/zend_exceptions.h>
 #include <ext/spl/spl_iterators.h>
 #include <ext/spl/spl_exceptions.h>
 #include <stdint.h>
-#define CL_TARGET_OPENCL_VERSION 120
 #include <CL/opencl.h>
 #include "Rindow/OpenCL/PlatformList.h"
 #include "Rindow/OpenCL/DeviceList.h"
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include "php_rindow_opencl.h"
 
@@ -88,7 +86,7 @@ static PHP_METHOD(DeviceList, __construct)
 
     platforms = Z_RINDOW_OPENCL_PLATFORM_LIST_OBJ_P(platforms_obj_p);
     if(index<0 || index >= platforms->num) {
-        zend_throw_exception_ex(spl_ce_OutOfRangeException, 0, "Invalid index of platforms: %d", index);
+        zend_throw_exception_ex(spl_ce_OutOfRangeException, 0, "Invalid index of platforms: %d", (int)index);
         return;
     }
     if(device_type==0) {
@@ -155,7 +153,7 @@ static PHP_METHOD(DeviceList, getOne)
 
     intern = Z_RINDOW_OPENCL_DEVICE_LIST_OBJ_P(getThis());
     if(index<0 || index >=intern->num) {
-        zend_throw_exception_ex(spl_ce_OutOfRangeException, 0, "Invalid index of devices: %d", index);
+        zend_throw_exception_ex(spl_ce_OutOfRangeException, 0, "Invalid index of devices: %d", (int)index);
         return;
     }
     // direct set to return_value
@@ -225,7 +223,7 @@ static PHP_METHOD(DeviceList, getInfo)
     ZEND_PARSE_PARAMETERS_END();
 
     if(index<0 || index >= intern->num) {
-        zend_throw_exception_ex(spl_ce_OutOfRangeException, 0, "Invalid index of deivces: %d", index);
+        zend_throw_exception_ex(spl_ce_OutOfRangeException, 0, "Invalid index of deivces: %d", (int)index);
         return;
     }
 
@@ -237,7 +235,6 @@ static PHP_METHOD(DeviceList, getInfo)
         return;
     }
     switch(param_name) {
-        case CL_DEVICE_BUILT_IN_KERNELS:
         case CL_DEVICE_NAME:
         case CL_DEVICE_VENDOR:
         case CL_DRIVER_VERSION:
@@ -245,6 +242,9 @@ static PHP_METHOD(DeviceList, getInfo)
         case CL_DEVICE_VERSION:
         case CL_DEVICE_OPENCL_C_VERSION:
         case CL_DEVICE_EXTENSIONS:
+#ifdef CL_VERSION_1_2
+        case CL_DEVICE_BUILT_IN_KERNELS:
+#endif
 #ifdef CL_VERSION_2_1
         case CL_DEVICE_IL_VERSION:
 #endif
@@ -286,10 +286,12 @@ static PHP_METHOD(DeviceList, getInfo)
         case CL_DEVICE_MIN_DATA_TYPE_ALIGN_SIZE:
         case CL_DEVICE_GLOBAL_MEM_CACHELINE_SIZE:
         case CL_DEVICE_MAX_CONSTANT_ARGS:
-        case CL_DEVICE_PARTITION_MAX_SUB_DEVICES:
-        case CL_DEVICE_REFERENCE_COUNT:
         case CL_DEVICE_GLOBAL_MEM_CACHE_TYPE:
         case CL_DEVICE_LOCAL_MEM_TYPE:
+#ifdef CL_VERSION_1_2
+        case CL_DEVICE_PARTITION_MAX_SUB_DEVICES:
+        case CL_DEVICE_REFERENCE_COUNT:
+#endif
 #ifdef CL_VERSION_2_0
         case CL_DEVICE_MAX_READ_WRITE_IMAGE_ARGS:
         case CL_DEVICE_IMAGE_PITCH_ALIGNMENT:
@@ -331,8 +333,10 @@ static PHP_METHOD(DeviceList, getInfo)
         case CL_DEVICE_ENDIAN_LITTLE:
         case CL_DEVICE_AVAILABLE:
         case CL_DEVICE_COMPILER_AVAILABLE:
+#ifdef CL_VERSION_1_2
         case CL_DEVICE_LINKER_AVAILABLE:
         case CL_DEVICE_PREFERRED_INTEROP_USER_SYNC:
+#endif
 #ifdef CL_VERSION_2_1
         case CL_DEVICE_SUB_GROUP_INDEPENDENT_FORWARD_PROGRESS:
 #endif
@@ -348,11 +352,13 @@ static PHP_METHOD(DeviceList, getInfo)
         case CL_DEVICE_IMAGE3D_MAX_WIDTH:
         case CL_DEVICE_IMAGE3D_MAX_HEIGHT:
         case CL_DEVICE_IMAGE3D_MAX_DEPTH:
-        case CL_DEVICE_IMAGE_MAX_BUFFER_SIZE:
-        case CL_DEVICE_IMAGE_MAX_ARRAY_SIZE:
         case CL_DEVICE_MAX_PARAMETER_SIZE:
         case CL_DEVICE_PROFILING_TIMER_RESOLUTION:
+#ifdef CL_VERSION_1_2
+        case CL_DEVICE_IMAGE_MAX_BUFFER_SIZE:
+        case CL_DEVICE_IMAGE_MAX_ARRAY_SIZE:
         case CL_DEVICE_PRINTF_BUFFER_SIZE:
+#endif
 #ifdef CL_VERSION_2_0
         case CL_DEVICE_MAX_GLOBAL_VARIABLE_SIZE:
         case CL_DEVICE_GLOBAL_VARIABLE_PREFERRED_TOTAL_SIZE:
@@ -393,6 +399,7 @@ static PHP_METHOD(DeviceList, getInfo)
             }
             return;
         }
+#ifdef CL_VERSION_1_2
         case CL_DEVICE_PARENT_DEVICE: {
             cl_device_id parent_device_id;
             errcode_ret = clGetDeviceInfo(intern->devices[index],
@@ -410,6 +417,7 @@ static PHP_METHOD(DeviceList, getInfo)
             }
             return;
         }
+#endif
         case CL_DEVICE_MAX_WORK_ITEM_SIZES: {
             size_t* item_sizes = emalloc(param_value_size_ret);
             errcode_ret = clGetDeviceInfo(intern->devices[index],
@@ -424,6 +432,7 @@ static PHP_METHOD(DeviceList, getInfo)
             efree(item_sizes);
             return;
         }
+#ifdef CL_VERSION_1_2
         case CL_DEVICE_PARTITION_PROPERTIES:
         case CL_DEVICE_PARTITION_TYPE: {
             cl_device_partition_property* properties = emalloc(param_value_size_ret);
@@ -443,6 +452,7 @@ static PHP_METHOD(DeviceList, getInfo)
             efree(properties);
             return;
         }
+#endif
         default:
             break;
     }
