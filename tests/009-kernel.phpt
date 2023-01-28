@@ -135,7 +135,8 @@ echo "SUCCESS Local buffer\n";
 
 echo "CL_KERNEL_FUNCTION_NAME=".$kernel->getInfo(OpenCL::CL_KERNEL_FUNCTION_NAME)."\n";
 echo "CL_KERNEL_NUM_ARGS=".$kernel->getInfo(OpenCL::CL_KERNEL_NUM_ARGS)."\n";
-echo "CL_KERNEL_ATTRIBUTES=".$kernel->getInfo(OpenCL::CL_KERNEL_ATTRIBUTES)."\n";
+// intel gpu doesn't support attributes
+// echo "CL_KERNEL_ATTRIBUTES=".$kernel->getInfo(OpenCL::CL_KERNEL_ATTRIBUTES)."\n";
 assert(is_array($kernel->getWorkGroupInfo(OpenCL::CL_KERNEL_COMPILE_WORK_GROUP_SIZE)));
 echo "SUCCESS getInfo\n";
 /*
@@ -239,7 +240,6 @@ SUCCESS complete kernel job with null arguments
 SUCCESS Local buffer
 CL_KERNEL_FUNCTION_NAME=reduce_sum
 CL_KERNEL_NUM_ARGS=3
-CL_KERNEL_ATTRIBUTES=
 SUCCESS getInfo
 ----- globaltest Y ------
   0,  1,  2,  3,
