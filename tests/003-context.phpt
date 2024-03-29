@@ -59,7 +59,11 @@ echo "SUCCESS construct from device_id\n";
 #  get information
 #
 
-$context = new Rindow\OpenCL\Context(OpenCL::CL_DEVICE_TYPE_DEFAULT);
+try {
+    $context = new Rindow\OpenCL\Context(OpenCL::CL_DEVICE_TYPE_GPU);
+} catch(RuntimeException $e) {
+    $context = new Rindow\OpenCL\Context(OpenCL::CL_DEVICE_TYPE_DEFAULT);
+}
 assert(1==$context->getInfo(OpenCL::CL_CONTEXT_REFERENCE_COUNT));
 $devices = $context->getInfo(OpenCL::CL_CONTEXT_DEVICES);
 assert($devices instanceof Rindow\OpenCL\DeviceList);

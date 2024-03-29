@@ -507,6 +507,7 @@ static PHP_METHOD(Program, getInfo)
         }
 #endif
         default:
+            zend_throw_exception_ex(spl_ce_RuntimeException, errcode_ret, "Unsupported Parameter Name errcode=%d", errcode_ret);
             break;
     }
 }

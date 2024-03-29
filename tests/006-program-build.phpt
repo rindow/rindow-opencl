@@ -42,7 +42,11 @@ function compile_error($program,$e) {
     throw $e;
 }
 
-$context = new Rindow\OpenCL\Context(OpenCL::CL_DEVICE_TYPE_DEFAULT);
+try {
+    $context = new Rindow\OpenCL\Context(OpenCL::CL_DEVICE_TYPE_GPU);
+} catch(RuntimeException $e) {
+    $context = new Rindow\OpenCL\Context(OpenCL::CL_DEVICE_TYPE_DEFAULT);
+}
 $devices = $context->getInfo(OpenCL::CL_CONTEXT_DEVICES);
 $dev_version = $devices->getInfo(0,OpenCL::CL_DEVICE_VERSION);
 //$dev_version = 'OpenCL 1.1 Mesa';

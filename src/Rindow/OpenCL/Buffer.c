@@ -1025,9 +1025,9 @@ static PHP_METHOD(Buffer, fill)
 
 /* Method Rindow\OpenCL\Buffer::copy(
     CommandQueue $command_queue,
-    Rindow\OpenCL\Buffer $dst_buffer  // source buffer
+    Rindow\OpenCL\Buffer $src_buffer  // source buffer
     int      $size=0,
-    int      $offset=0,
+    int      $src_offset=0,
     int      $dst_offset=0,
     EventList $events=null,
     EventList $event_wait_list=null
@@ -1035,7 +1035,7 @@ static PHP_METHOD(Buffer, fill)
 static PHP_METHOD(Buffer, copy)
 {
     zval* command_queue_obj_p=NULL;
-    zval* dst_buffer_obj_p=NULL;
+    zval* src_buffer_obj_p=NULL;
     zend_long size=0;
     zend_long src_offset=0;
     zend_long dst_offset=0;
@@ -1053,7 +1053,7 @@ static PHP_METHOD(Buffer, copy)
 
     ZEND_PARSE_PARAMETERS_START_EX(ZEND_PARSE_PARAMS_THROW, 2, 7)
         Z_PARAM_OBJECT_OF_CLASS(command_queue_obj_p,php_rindow_opencl_command_queue_ce)
-        Z_PARAM_OBJECT_OF_CLASS(dst_buffer_obj_p,php_rindow_opencl_buffer_ce)
+        Z_PARAM_OBJECT_OF_CLASS(src_buffer_obj_p,php_rindow_opencl_buffer_ce)
         Z_PARAM_OPTIONAL
         Z_PARAM_LONG(size)
         Z_PARAM_LONG(src_offset)
@@ -1063,8 +1063,8 @@ static PHP_METHOD(Buffer, copy)
     ZEND_PARSE_PARAMETERS_END();
 
     command_queue_obj = Z_RINDOW_OPENCL_COMMAND_QUEUE_OBJ_P(command_queue_obj_p);
-    src_buffer_obj = Z_RINDOW_OPENCL_BUFFER_OBJ_P(getThis());
-    dst_buffer_obj = Z_RINDOW_OPENCL_BUFFER_OBJ_P(dst_buffer_obj_p);
+    src_buffer_obj = Z_RINDOW_OPENCL_BUFFER_OBJ_P(src_buffer_obj_p);
+    dst_buffer_obj = Z_RINDOW_OPENCL_BUFFER_OBJ_P(getThis());
     if(size==0) {
         size = dst_buffer_obj->size;
     }
@@ -1159,8 +1159,8 @@ static PHP_METHOD(Buffer, copyRect)
 
     command_queue_obj = Z_RINDOW_OPENCL_COMMAND_QUEUE_OBJ_P(command_queue_obj_p);
 
-    src_buffer_obj = Z_RINDOW_OPENCL_BUFFER_OBJ_P(getThis());
-    dst_buffer_obj = Z_RINDOW_OPENCL_BUFFER_OBJ_P(src_buffer_obj_p);
+    src_buffer_obj = Z_RINDOW_OPENCL_BUFFER_OBJ_P(src_buffer_obj_p);
+    dst_buffer_obj = Z_RINDOW_OPENCL_BUFFER_OBJ_P(getThis());
     if(src_buffer_obj->buffer==NULL) {
         zend_throw_exception(spl_ce_InvalidArgumentException, "Source buffer is not initialized.", CL_INVALID_VALUE);
         return;
@@ -1338,6 +1338,97 @@ static PHP_METHOD(Buffer, copyRect)
 }
 /* }}} */
 
+/* Method Rindow\OpenCL\Buffer::getInfo(
+    int $param_name
+) : string {{{ */
+static PHP_METHOD(Buffer, getInfo)
+{
+    zend_long param_name;
+    size_t param_value_size_ret;
+    cl_int errcode_ret;
+    php_rindow_opencl_buffer_t* intern;
+    zend_long result=0;
+    cl_uint uint_result;
+    cl_ulong ulong_result;
+    cl_bool bool_result;
+    cl_bitfield bitfield_result;
+    size_t size_t_result;
+
+    intern = Z_RINDOW_OPENCL_BUFFER_OBJ_P(getThis());
+
+    ZEND_PARSE_PARAMETERS_START_EX(ZEND_PARSE_PARAMS_THROW, 1, 1)
+        Z_PARAM_LONG(param_name)
+    ZEND_PARSE_PARAMETERS_END();
+
+    errcode_ret = clGetMemObjectInfo(intern->buffer,
+                      (cl_mem_info)param_name,
+                      0, NULL, &param_value_size_ret);
+    if(errcode_ret!=CL_SUCCESS) {
+        zend_throw_exception_ex(spl_ce_RuntimeException, errcode_ret, "clGetMemObjectInfo Error errcode=%d", errcode_ret);
+        return;
+    }
+    switch(param_name) {
+        case CL_MEM_TYPE:
+        case CL_MEM_MAP_COUNT:
+        case CL_MEM_REFERENCE_COUNT:
+            errcode_ret = clGetMemObjectInfo(intern->buffer,
+                        (cl_mem_info)param_name,
+                        sizeof(cl_uint), &uint_result, NULL);
+            result = (zend_long)uint_result;
+            RETURN_LONG(result);
+            break;
+#ifdef CL_VERSION_2_0
+        case CL_MEM_USES_SVM_POINTER:
+            errcode_ret = clGetMemObjectInfo(intern->buffer,
+                (cl_mem_info)param_name,
+                sizeof(cl_bool), &bool_result, NULL);
+            result = (zend_long)bool_result;
+            RETURN_LONG(result);
+            break;
+#endif
+        case CL_MEM_SIZE:
+        case CL_MEM_OFFSET:
+            errcode_ret = clGetMemObjectInfo(intern->buffer,
+                (cl_mem_info)param_name,
+                sizeof(size_t), &size_t_result, NULL);
+            result = (zend_long)size_t_result;
+            RETURN_LONG(result);
+            break;
+        case CL_MEM_FLAGS:
+            errcode_ret = clGetMemObjectInfo(intern->buffer,
+                        (cl_mem_info)param_name,
+                        sizeof(cl_bitfield), &bitfield_result, NULL);
+            result = (zend_long)bitfield_result;
+            RETURN_LONG(result);
+            break;
+        //case CL_MEM_CONTEXT: {
+        //    cl_context context_result;
+        //    errcode_ret = clGetMemObjectInfo(intern->buffer,
+        //                (cl_mem_info)param_name,
+        //                sizeof(cl_context), &context_result, NULL);
+        //    // return just context id
+        //    zend_long result = (zend_long)context_result;
+        //    RETURN_LONG(result);
+        //    break;
+        //}
+        //case CL_MEM_ASSOCIATED_MEMOBJECT: {
+        //    cl_mem mem_result;
+        //    errcode_ret = clGetMemObjectInfo(intern->buffer,
+        //                (cl_mem_info)param_name,
+        //                sizeof(cl_mem), &mem_result, NULL);
+        //    // return just context id
+        //    zend_long result = (zend_long)mem_result;
+        //    RETURN_LONG(result);
+        //    break;
+        //}
+        default:
+            zend_throw_exception_ex(spl_ce_RuntimeException, errcode_ret, "Unsupported Parameter Name errcode=%d", errcode_ret);
+            break;
+    }
+}
+/* }}} */
+
+
 ZEND_BEGIN_ARG_INFO_EX(ai_Buffer___construct, 0, 0, 2)
     ZEND_ARG_OBJ_INFO(0, context, Rindow\\OpenCL\\Context, 0)
     ZEND_ARG_INFO(0, size)
@@ -1439,6 +1530,10 @@ ZEND_BEGIN_ARG_INFO_EX(ai_Buffer_copyRect, 0, 0, 3)
     ZEND_ARG_OBJ_INFO(0, event_wait_list, Rindow\\OpenCL\\EventList, 1)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(ai_Buffer_getInfo, 0, 0, 1)
+    ZEND_ARG_INFO(0, param_name)
+ZEND_END_ARG_INFO()
+
 ZEND_BEGIN_ARG_INFO_EX(ai_Buffer_void, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
@@ -1458,6 +1553,7 @@ static zend_function_entry php_rindow_opencl_buffer_me[] = {
 #endif
     PHP_ME(Buffer, copy,       ai_Buffer_copy,      ZEND_ACC_PUBLIC)
     PHP_ME(Buffer, copyRect,   ai_Buffer_copyRect,  ZEND_ACC_PUBLIC)
+    PHP_ME(Buffer, getInfo,    ai_Buffer_getInfo,   ZEND_ACC_PUBLIC)
     PHP_FE_END
     /* clang-format on */
 };

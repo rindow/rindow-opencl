@@ -13,8 +13,12 @@ include __DIR__.'/../testPHP/HostBuffer.php';
 define('NWITEMS',64);
 use Interop\Polite\Math\Matrix\NDArray;
 use Interop\Polite\Math\Matrix\OpenCL;
-$context = new Rindow\OpenCL\Context(OpenCL::CL_DEVICE_TYPE_DEFAULT);
-//$context = new Rindow\OpenCL\Context(OpenCL::CL_DEVICE_TYPE_CPU);
+try {
+    $context = new Rindow\OpenCL\Context(OpenCL::CL_DEVICE_TYPE_GPU);
+} catch(RuntimeException $e) {
+    $context = new Rindow\OpenCL\Context(OpenCL::CL_DEVICE_TYPE_DEFAULT);
+}
+
 $queue = new Rindow\OpenCL\CommandQueue($context);
 $sources = [
     "__kernel void saxpy(const global float * x,\n".

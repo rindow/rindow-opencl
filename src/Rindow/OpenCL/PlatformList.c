@@ -183,15 +183,17 @@ static PHP_METHOD(PlatformList, getInfo)
         }
 #ifdef CL_VERSION_2_1
         case CL_PLATFORM_HOST_TIMER_RESOLUTION: {
+            cl_ulong ulong_result;
             errcode_ret = clGetPlatformInfo(intern->platforms[index],
                     (cl_platform_info)param_name,
                     sizeof(cl_ulong), &ulong_result, NULL);
-            result = (zend_long)ulong_result;
+            zend_long result = (zend_long)ulong_result;
             RETURN_LONG(result);
             break;
         }
 #endif
         default:
+            zend_throw_exception_ex(spl_ce_RuntimeException, errcode_ret, "Unsupported Parameter Name errcode=%d", errcode_ret);
             break;
     }
 }

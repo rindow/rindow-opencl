@@ -16,7 +16,12 @@ use Interop\Polite\Math\Matrix\OpenCL;
 //
 //  Constract buffer
 //
-$context = new Rindow\OpenCL\Context(OpenCL::CL_DEVICE_TYPE_DEFAULT);
+try {
+    $context = new Rindow\OpenCL\Context(OpenCL::CL_DEVICE_TYPE_GPU);
+} catch(RuntimeException $e) {
+    $context = new Rindow\OpenCL\Context(OpenCL::CL_DEVICE_TYPE_DEFAULT);
+}
+
 $devices = $context->getInfo(OpenCL::CL_CONTEXT_DEVICES);
 $dev_version = $devices->getInfo(0,OpenCL::CL_DEVICE_VERSION);
 // $dev_version = 'OpenCL 1.1 Mesa';
@@ -312,7 +317,7 @@ foreach(range(0,15) as $value) {
 $buffer2 = new Rindow\OpenCL\Buffer($context,intval(16*32/8),
     OpenCL::CL_MEM_READ_WRITE|OpenCL::CL_MEM_COPY_HOST_PTR,
     $hostBuffer);
-$buffer->copy($queue,$buffer2);
+$buffer2->copy($queue,$buffer);
 $queue->finish();
 $buffer2->read($queue,$hostBuffer);
 foreach(range(0,15) as $value) {
@@ -330,7 +335,7 @@ foreach(range(0,15) as $value) {
 $buffer2 = new Rindow\OpenCL\Buffer($context,intval(16*32/8),
     OpenCL::CL_MEM_READ_WRITE|OpenCL::CL_MEM_COPY_HOST_PTR,
     $hostBuffer);
-$buffer->copy($queue,$buffer2,
+$buffer2->copy($queue,$buffer,
     $size=0,$offset=0,$src_offset=0,$events=null,$waitEvent=null);
 $queue->finish();
 $buffer2->read($queue,$hostBuffer);
@@ -409,7 +414,7 @@ $dstBuffer = new Rindow\OpenCL\Buffer(
     $subHostBuffer->value_size()*count($subHostBuffer),
     OpenCL::CL_MEM_READ_WRITE|OpenCL::CL_MEM_COPY_HOST_PTR,
     $subHostBuffer);
-$buffer->copyRect($queue,$dstBuffer,[2*$value_size,2,2],
+$dstBuffer->copyRect($queue,$buffer,[2*$value_size,2,2],
     $src_origin=[1*$value_size,1,1],
     $dst_origin=null,
     $src_row_pitch=$value_size*3,$src_slice_pitch=$value_size*3*3,
@@ -423,6 +428,61 @@ foreach($trues as $idx => $value) {
     assert($subHostBuffer[$idx] == $value);
 }
 echo "SUCCESS copyRect\n";
+
+$mem_types = [
+    0x10F0 => "CL_MEM_OBJECT_BUFFER",
+    0x10F1 => "CL_MEM_OBJECT_IMAGE2D",
+    0x10F2 => "CL_MEM_OBJECT_IMAGE3D",
+    // CL_VERSION_1_2
+    0x10F3 => "CL_MEM_OBJECT_IMAGE2D_ARRAY",
+    0x10F4 => "CL_MEM_OBJECT_IMAGE1D",
+    0x10F5 => "CL_MEM_OBJECT_IMAGE1D_ARRAY",
+    0x10F6 => "CL_MEM_OBJECT_IMAGE1D_BUFFER",
+];
+
+//assert(1==$context->getInfo(OpenCL::CL_CONTEXT_REFERENCE_COUNT));
+/*
+{
+    $hostBuffer = new RindowTest\OpenCL\HostBuffer(
+        16,NDArray::float32);
+    $count = count($hostBuffer);
+    for($i=0; $i<$count; $i++) {
+        $hostBuffer[$i] = 0;
+    }
+    $buffer = new Rindow\OpenCL\Buffer(
+        $context,
+        $hostBuffer->value_size()*count($hostBuffer),
+        OpenCL::CL_MEM_READ_WRITE|OpenCL::CL_MEM_COPY_HOST_PTR,
+        $hostBuffer);
+
+    echo "========\n";
+    $type = $devices->getInfo(0,OpenCL::CL_DEVICE_TYPE);
+    echo "DeviceType: ".(($type===OpenCL::CL_DEVICE_TYPE_GPU)?'GPU':'CPU')."\n";
+    echo "CL_MEM_TYPE=".$mem_types[$buffer->getInfo(OpenCL::CL_MEM_TYPE)]."\n";
+    echo "CL_MEM_FLAGS=(";
+    $mem_flags = $buffer->getInfo(OpenCL::CL_MEM_FLAGS);
+    if($mem_flags&OpenCL::CL_MEM_READ_WRITE) { echo "READ_WRITE,"; }
+    if($mem_flags&OpenCL::CL_MEM_WRITE_ONLY) { echo "WRITE_ONLY,"; }
+    if($mem_flags&OpenCL::CL_MEM_READ_ONLY) { echo "READ_ONLY,"; }
+    if($mem_flags&OpenCL::CL_MEM_USE_HOST_PTR) { echo "USE_HOST_PTR,"; }
+    if($mem_flags&OpenCL::CL_MEM_ALLOC_HOST_PTR) { echo "ALLOC_HOST_PTR,"; }
+    if($mem_flags&OpenCL::CL_MEM_COPY_HOST_PTR) { echo "COPY_HOST_PTR,"; }
+    if(!$isOpenCL110) {
+        if($mem_flags&OpenCL::CL_MEM_HOST_WRITE_ONLY) { echo "HOST_WRITE_ONLY,"; }
+        if($mem_flags&OpenCL::CL_MEM_HOST_READ_ONLY) { echo "HOST_READ_ONLY,"; }
+        if($mem_flags&OpenCL::CL_MEM_HOST_NO_ACCESS) { echo "HOST_NO_ACCESS,"; }
+    }
+    echo ")\n";
+    echo "CL_MEM_SIZE=".$buffer->getInfo(OpenCL::CL_MEM_SIZE)."\n";
+    echo "CL_MEM_MAP_COUNT=".$buffer->getInfo(OpenCL::CL_MEM_MAP_COUNT)."\n";
+    echo "CL_MEM_REFERENCE_COUNT=".$buffer->getInfo(OpenCL::CL_MEM_REFERENCE_COUNT)."\n";
+    echo "CL_MEM_OFFSET=".$buffer->getInfo(OpenCL::CL_MEM_OFFSET)."\n";
+    //echo "CL_MEM_CONTEXT=".$buffer->getInfo(OpenCL::CL_MEM_CONTEXT)."\n";
+    //echo "CL_MEM_ASSOCIATED_MEMOBJECT=".$buffer->getInfo(OpenCL::CL_MEM_ASSOCIATED_MEMOBJECT)."\n";
+}
+*/
+echo "SUCCESS\n";
+
 ?>
 --EXPECT--
 SUCCESS Pure buffer
@@ -450,3 +510,4 @@ SUCCESS construct with explicit dtype
 SUCCESS readRect
 SUCCESS writeRect
 SUCCESS copyRect
+SUCCESS

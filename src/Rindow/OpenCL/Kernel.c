@@ -422,16 +422,16 @@ static PHP_METHOD(Kernel, getInfo)
             RETURN_STR(param_value_val);
             break;
         }
-        case CL_KERNEL_CONTEXT: {
-            cl_context context;
-            errcode_ret = clGetKernelInfo(intern->kernel,
-                        (cl_kernel_info)param_name,
-                        sizeof(cl_context), &context, NULL);
-            // return just context id
-            zend_long result = (zend_long)context;
-            RETURN_LONG(result);
-            break;
-        }
+        //case CL_KERNEL_CONTEXT: {
+        //    cl_context context;
+        //    errcode_ret = clGetKernelInfo(intern->kernel,
+        //                (cl_kernel_info)param_name,
+        //                sizeof(cl_context), &context, NULL);
+        //    // return just context id
+        //    zend_long result = (zend_long)context;
+        //    RETURN_LONG(result);
+        //    break;
+        //}
         case CL_KERNEL_PROGRAM: {
             cl_program program;
             errcode_ret = clGetKernelInfo(intern->kernel,
@@ -443,6 +443,7 @@ static PHP_METHOD(Kernel, getInfo)
             break;
         }
         default:
+            zend_throw_exception_ex(spl_ce_RuntimeException, errcode_ret, "Unsupported Parameter Name errcode=%d", errcode_ret);
             break;
     }
 }

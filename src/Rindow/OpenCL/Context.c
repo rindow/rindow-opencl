@@ -158,23 +158,48 @@ static PHP_METHOD(Context, __construct)
         // it throw the CL_INVALID_PLATFORM.
         // Probably the clCreateContextFromType needs flatform in cl_context_properties.
         //
+        cl_uint numPlatforms;
+        cl_platform_id* platforms;
+        cl_int errcode_ret=0;
+
+        errcode_ret = clGetPlatformIDs(0, NULL, &numPlatforms);
+        if(errcode_ret!=CL_SUCCESS) {
+            zend_throw_exception_ex(spl_ce_RuntimeException, errcode_ret, "clGetPlatformIDs Error errcode=%d", errcode_ret);
+            return;
+        }
+        if(numPlatforms<=0) {
+            return;
+        }
+        platforms = ecalloc(numPlatforms,sizeof(cl_platform_id));
+        if(platforms==NULL) {
+            zend_throw_exception_ex(spl_ce_RuntimeException, 0, "memory allocation error: %d", numPlatforms);
+            return;
+        }
+        errcode_ret = clGetPlatformIDs(numPlatforms, platforms, NULL);
+        if(errcode_ret!=CL_SUCCESS) {
+            efree(platforms);
+            zend_throw_exception_ex(spl_ce_RuntimeException, errcode_ret, "clGetPlatformIDs Error errcode=%d", errcode_ret);
+            return;
+        }
+
         cl_device_type device_type = Z_LVAL_P(device_list_obj_p);
         cl_context_properties properties[] = { CL_CONTEXT_PLATFORM, 0, 0 };
-        cl_platform_id platform;
-        cl_uint num_platforms=0;
 
-        clGetPlatformIDs( 1,          // cl_uint num_entries
-                          &platform,  // cl_platform_id * platforms
-                          &num_platforms );     // cl_uint * num_platforms
-        properties[1] = (cl_context_properties)platform;
-        errcode_ret= 0;
-        context = clCreateContextFromType(
-            properties,        // const cl_context_properties * properties,
-            device_type, // cl_device_type      device_type,
-            NULL,        // CL_CALLBACK * pfn_notify
-            NULL,        // void *user_data,
-            &errcode_ret // cl_int *errcode_ret
-        );
+        for(int i=0;i<numPlatforms;i++) {
+            errcode_ret= 0;
+            properties[1] = (cl_context_properties)platforms[i];
+            context = clCreateContextFromType(
+                properties,        // const cl_context_properties * properties,
+                device_type, // cl_device_type      device_type,
+                NULL,        // CL_CALLBACK * pfn_notify
+                NULL,        // void *user_data,
+                &errcode_ret // cl_int *errcode_ret
+            );
+            if(errcode_ret==CL_SUCCESS) {
+                break;
+            }
+        }
+        efree(platforms);
         if(errcode_ret!=CL_SUCCESS) {
             // static char message[128];
             // sprintf(message,"clCreateContextFromType Error: device_type=%lld, error=%d",device_type,errcode_ret);
@@ -269,6 +294,7 @@ static PHP_METHOD(Context, getInfo)
 #ifdef CL_VERSION_2_1
 #endif
         default:
+            zend_throw_exception_ex(spl_ce_RuntimeException, errcode_ret, "Unsupported Parameter Name errcode=%d", errcode_ret);
             break;
     }
 }
