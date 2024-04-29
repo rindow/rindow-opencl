@@ -1349,8 +1349,6 @@ static PHP_METHOD(Buffer, getInfo)
     php_rindow_opencl_buffer_t* intern;
     zend_long result=0;
     cl_uint uint_result;
-    cl_ulong ulong_result;
-    cl_bool bool_result;
     cl_bitfield bitfield_result;
     size_t size_t_result;
 

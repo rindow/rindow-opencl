@@ -185,7 +185,7 @@ static PHP_METHOD(Context, __construct)
         cl_device_type device_type = Z_LVAL_P(device_list_obj_p);
         cl_context_properties properties[] = { CL_CONTEXT_PLATFORM, 0, 0 };
 
-        for(int i=0;i<numPlatforms;i++) {
+        for(unsigned int i=0;i<numPlatforms;i++) {
             errcode_ret= 0;
             properties[1] = (cl_context_properties)platforms[i];
             context = clCreateContextFromType(

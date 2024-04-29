@@ -90,8 +90,14 @@ static PHP_METHOD(CommandQueue, __construct)
     }
 
     intern->command_queue = command_queue;
+#if PHP_MAJOR_VERSION >= 8
     zend_update_property(php_rindow_opencl_command_queue_ce, &(intern->std),
          "context", sizeof("context")-1, context_obj_p);
+#else
+    zval* this_obj_p=getThis();
+    zend_update_property(php_rindow_opencl_command_queue_ce, this_obj_p,
+         "context", sizeof("context")-1, context_obj_p);
+#endif
 }
 /* }}} */
 
@@ -99,12 +105,18 @@ static PHP_METHOD(CommandQueue, __construct)
 ) : void {{{ */
 static PHP_METHOD(CommandQueue, getContext)
 {
-    php_rindow_opencl_command_queue_t* intern;
     zval* context_obj_p=NULL;
 
+#if PHP_MAJOR_VERSION >= 8
+    php_rindow_opencl_command_queue_t* intern;
     intern = Z_RINDOW_OPENCL_COMMAND_QUEUE_OBJ_P(getThis());
     context_obj_p = zend_read_property(php_rindow_opencl_command_queue_ce, &(intern->std),
         "context", sizeof("context")-1, 1, NULL);
+#else
+    zval* this_obj_p=getThis();
+    context_obj_p = zend_read_property(php_rindow_opencl_command_queue_ce, this_obj_p,
+        "context", sizeof("context")-1, 1, NULL);
+#endif
 
     RETURN_ZVAL(context_obj_p, 1, 0);
 }

@@ -418,7 +418,7 @@ $dstBuffer->copyRect($queue,$buffer,[2*$value_size,2,2],
     $src_origin=[1*$value_size,1,1],
     $dst_origin=null,
     $src_row_pitch=$value_size*3,$src_slice_pitch=$value_size*3*3,
-    $dst_row_pitch=$value_size*2,$dst_slice_pitch=$value_size*2*2,
+    $dst_row_pitch=$value_size*2,$dst_slice_pitch=$value_size*2*2
     );
 $queue->finish();
 $dstBuffer->read($queue,$subHostBuffer);

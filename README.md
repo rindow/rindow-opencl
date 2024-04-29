@@ -90,9 +90,9 @@ Install gcc development environment and opencl library. Then install the php dev
 ```shell
 $ sudo apt install build-essential autoconf automake libtool bison re2c
 $ sudo apt install pkg-config
-$ sudo apt install php8.1-dev
+$ sudo apt install phpX.X-dev (ex. php8.1-dev)
 $ sudo apt install ocl-icd-opencl-dev
-$ sudo apt install ./rindow-openblas-php8.1_X.X.X-X+ubuntuXX.XX_amd64.deb
+$ sudo apt install ./rindow-openblas-phpX.X_X.X.X_amd64.deb (ex. php8.1)
 ```
 
 ### Build
@@ -102,10 +102,10 @@ Run the target php version of phpize and build.
 $ git clone https://github.com/rindow/rindow-opencl
 $ cd rindow-opencl
 $ composer update
-$ phpize8.1
+$ phpizeX.X (ex. phpize8.1)
 $ mv build/Makefile.global build/Makefile.global.orig
 $ sed -f Makefile.global.patch < build/Makefile.global.orig > build/Makefile.global
-$ ./configure --enable-rindow_opencl --with-php-config=php-config8.1
+$ ./configure --enable-rindow_opencl --with-php-config=php-configX.X (ex. php-config8.1)
 $ make clean
 $ make
 $ make test
@@ -118,6 +118,12 @@ $ sudo make install
 ```
 Add the "extension=rindow_opencl" entry to php.ini
 
+If you want an easier install, use the following spell instead of "make install" and creating an ini file.
+
+```shell
+$ sh ./packaging.sh X.X   (ex. sh ./packaging.sh 8.1)
+$ sudo apt install ./rindow-opencl-phpX.X_X.X.X_amd64.deb (ex. ./rindow-opencl-php8.1_...)
+```
 
 How to build from source code on Windows
 ========================================
